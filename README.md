@@ -194,31 +194,45 @@ You can either put game into `/storage/emulated/0/Android/data/com.yuri.onscript
 
 ### (1) local windows  
 
-Install the dependency in msys2,  
+在 **MSYS2 MinGW 64-bit** 终端中操作（不要用 MSYS 或 MinGW 32-bit）。32 位 (i686) 包已被 MSYS2 逐步移除，当前仅支持 64 位本地编译。
+
+安装依赖：
 
 ``` sh
 pacman -Syu --noconfirm
-pacman -S --noconfirm make tar vim curl # util tools
-pacman -S --noconfirm mingw-w64-x86_64-binutils mingw-w64-x86_64-gcc mingw-w64-x86_64-gdb # mingw64 compile tool
-pacman -S --noconfirm mingw-w64-i686-binutils mingw-w64-i686-gcc mingw-w64-i686-gdb # mingw32 compile tool
+pacman -S --noconfirm make tar vim curl                    # 工具
+pacman -S --noconfirm mingw-w64-x86_64-cmake                # 构建
+pacman -S --noconfirm mingw-w64-x86_64-binutils mingw-w64-x86_64-gcc mingw-w64-x86_64-gdb
 
-pacman -S --noconfirm mingw-w64-i686-SDL2 mingw-w64-x86_64-SDL2
-pacman -S --noconfirm mingw-w64-i686-SDL2_image mingw-w64-x86_64-SDL2_image
-pacman -S --noconfirm mingw-w64-i686-SDL2_ttf mingw-w64-x86_64-SDL2_ttf
-pacman -S --noconfirm mingw-w64-i686-SDL2_mixer mingw-w64-x86_64-SDL2_mixer
+pacman -S --noconfirm mingw-w64-x86_64-SDL2
+pacman -S --noconfirm mingw-w64-x86_64-SDL2_image
+pacman -S --noconfirm mingw-w64-x86_64-SDL2_ttf
+pacman -S --noconfirm mingw-w64-x86_64-SDL2_mixer
 
-pacman -S --noconfirm mingw-w64-i686-brotli mingw-w64-x86_64-brotli
-pacman -S --noconfirm mingw-w64-i686-mesa mingw-w64-x86_64-mesa
-pacman -S --noconfirm mingw-w64-i686-lua mingw-w64-x86_64-lua
+pacman -S --noconfirm mingw-w64-x86_64-brotli
+pacman -S --noconfirm mingw-w64-x86_64-mesa
+pacman -S --noconfirm mingw-w64-x86_64-lua
+
+# SDL2_image (AVIF/WebP 等) 及 libavif 编解码依赖
+pacman -S --noconfirm mingw-w64-x86_64-libavif
+pacman -S --noconfirm mingw-w64-x86_64-aom mingw-w64-x86_64-svt-av1 mingw-w64-x86_64-rav1e
+pacman -S --noconfirm mingw-w64-x86_64-dav1d mingw-w64-x86_64-libyuv
+pacman -S --noconfirm mingw-w64-x86_64-libwebp
+
+# SDL2_mixer 格式支持
+pacman -S --noconfirm mingw-w64-x86_64-libxmp mingw-w64-x86_64-wavpack
+pacman -S --noconfirm mingw-w64-x86_64-flac mingw-w64-x86_64-libvorbis
 ```
 
-and then use these `local_msys2mingw32.sh` or `local_msys2mingw64.sh` to build.
+编译（将 `C:/dev/msys64` 换成你的 MSYS2 安装路径）：
 
 ``` sh
 cd script
 chmod +x *.sh
-sh -c "export BUILD_TYPE=Debug && export MSYS2_HOME=/path/to/msys2 && ./local_msys2mingw32.sh"
-```  
+sh -c "export BUILD_TYPE=Release && export MSYS2_HOME=C:/dev/msys64 && ./local_msys2mingw64.sh"
+```
+
+产物：`build_msys2mingw64/onsyuri.exe`。  
 
 ### (2) local linux  
 

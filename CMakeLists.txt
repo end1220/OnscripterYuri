@@ -165,14 +165,21 @@ function(config_windows_msys2 TARGET_NAME)
             lua
 
             SDL2_image
+            avif
+            aom
+            SvtAv1Enc
+            rav1e
+            dav1d
+            yuv
             m
             png
             jxl
             hwy
-            jpeg
             tiff
+            jpeg
             zstd
             deflate
+            webpdemux
             webp
             sharpyuv
             lzma
@@ -191,6 +198,11 @@ function(config_windows_msys2 TARGET_NAME)
             bz2
         
             SDL2_mixer
+            xmp
+            wavpack
+            FLAC
+            vorbisfile
+            vorbis
             opusfile
             opus
             ogg
@@ -201,7 +213,7 @@ function(config_windows_msys2 TARGET_NAME)
         target_link_libraries(${TARGET_NAME} 
             -Wl,-Bdynamic # dynamic links
             dinput8 shell32 setupapi advapi32 uuid version oleaut32 ole32 
-            imm32 winmm gdi32 user32
+            imm32 winmm gdi32 user32 ntdll dwrite
         )
 
     else()
