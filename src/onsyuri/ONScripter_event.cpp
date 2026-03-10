@@ -153,12 +153,14 @@ ONS_Key transControllerButton(Uint8 button)
         SDLK_DOWN,              /* DPAD_DOWN */
         SDLK_LEFT,              /* DPAD_LEFT */
         SDLK_RIGHT,             /* DPAD_RIGHT */
+#if SDL_CONTROLLER_BUTTON_MAX > 15
         SDLK_UNKNOWN,           /* MISC1 */
         SDLK_UNKNOWN,           /* PADDLE1 */
         SDLK_UNKNOWN,           /* PADDLE2 */
         SDLK_UNKNOWN,           /* PADDLE3 */
         SDLK_UNKNOWN,           /* PADDLE4 */
         SDLK_UNKNOWN,           /* TOUCHPAD */
+#endif
     };
     return button_map[button];
 }

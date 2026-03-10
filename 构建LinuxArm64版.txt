@@ -1,0 +1,11 @@
+cd script
+chmod +x local_linuxa64.sh
+
+# 首次构建（安装依赖并编译）
+BUILD_TYPE=Release OBTAIN_DEPENDS=yes ./local_linuxa64.sh
+
+# 或调试版
+BUILD_TYPE=Debug OBTAIN_DEPENDS=yes ./local_linuxa64.sh
+
+# 依赖已安装时
+BUILD_TYPE=Release ./local_linuxa64.sh

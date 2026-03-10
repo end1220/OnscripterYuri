@@ -44,24 +44,28 @@ function(config_linux TARGET_NAME)
 
     else()
         include(FindPkgConfig)
-        find_package(SDL2 REQUIRED CONFIG REQUIRED COMPONENTS SDL2)
+        pkg_check_modules(SDL2 REQUIRED sdl2)
         pkg_check_modules(SDL2_TTF REQUIRED SDL2_ttf)
         pkg_check_modules(SDL2_IMAGE REQUIRED SDL2_image)
         pkg_check_modules(SDL2_MIXER REQUIRED SDL2_mixer)
         pkg_check_modules(JPEG REQUIRED libjpeg)
-        find_package(Lua REQUIRED)
+        pkg_check_modules(LUA REQUIRED lua5.3)
         target_include_directories(${TARGET_NAME} PRIVATE
-            ${LUA_INCLUDE_DIR}
+            ${SDL2_INCLUDE_DIRS}
+            ${SDL2_TTF_INCLUDE_DIRS}
+            ${SDL2_IMAGE_INCLUDE_DIRS}
+            ${SDL2_MIXER_INCLUDE_DIRS}
+            ${LUA_INCLUDE_DIRS}
         )
         target_link_libraries(${TARGET_NAME} PRIVATE
-            SDL2::SDL2
+            ${SDL2_LINK_LIBRARIES}
             jpeg
             bz2
-            lua
+            ${LUA_LINK_LIBRARIES}
             dl
-            SDL2_ttf
-            SDL2_image
-            SDL2_mixer
+            ${SDL2_TTF_LINK_LIBRARIES}
+            ${SDL2_IMAGE_LINK_LIBRARIES}
+            ${SDL2_MIXER_LINK_LIBRARIES}
             pthread
         )
     endif()
