@@ -612,6 +612,7 @@ private:
     SDL_Renderer *renderer;
     SDL_Texture *texture;
     SDL_GameController *controller;
+    SDL_Joystick *joystick;  /* fallback when GameController not available */
 
     void setCaption(const char *title, const char *iconstr = NULL);
     void setScreenDirty(bool screen_dirty);

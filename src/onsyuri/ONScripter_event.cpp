@@ -135,6 +135,28 @@ ONS_Key transKey(ONS_Key key)
     return key;
 }
 
+static ONS_Key transJoystickButton(Uint8 button)
+{
+    /* Loong Gamepad mapping (user provided):
+       0=B 1=A 2=X 3=Y 4=L1 5=R1 6=L2 7=R2 8=SELECT 9=START 10=MENU 13=V- 14=V+ */
+    switch (button) {
+        case 0: return SDLK_ESCAPE;   /* B */
+        case 1: return SDLK_RETURN;   /* A */
+        case 2: return SDLK_RCTRL;    /* X */
+        case 3: return SDLK_SPACE;    /* Y */
+        case 4: return SDLK_o;        /* L1 */
+        case 5: return SDLK_s;        /* R1 */
+        case 6: return SDLK_0;        /* L2 */
+        case 7: return SDLK_F10;      /* R2 */
+        case 8: return SDLK_TAB;      /* SELECT */
+        case 9: return SDLK_a;        /* START */
+        case 10: return SDLK_ESCAPE;  /* MENU */
+        case 13: return SDLK_UNKNOWN; /* V- */
+        case 14: return SDLK_UNKNOWN; /* V+ */
+        default: return SDLK_UNKNOWN;
+    }
+}
+
 ONS_Key transControllerButton(Uint8 button)
 {
     ONS_Key button_map[SDL_CONTROLLER_BUTTON_MAX] = {
@@ -670,27 +692,40 @@ void ONScripter::shiftCursorOnButton( int diff )
     ButtonLink *button = root_button_link.next;
     for (num=0 ; button ; num++) 
         button = button->next;
+    utils::printInfo("shiftCursorOnButton: diff=%d num=%d line(before)=%d\n", diff, num, shortcut_mouse_line);
 
     shortcut_mouse_line += diff;
     if      (shortcut_mouse_line < 0)    shortcut_mouse_line = num-1;
     else if (shortcut_mouse_line >= num) shortcut_mouse_line = 0;
+    utils::printInfo("shiftCursorOnButton: line(after)=%d\n", shortcut_mouse_line);
 
     button = root_button_link.next;
     for (int i=0 ; i<shortcut_mouse_line ; i++) 
         button  = button->next;
     
     if (button){
-        int x = button->select_rect.x + button->select_rect.w/2;
-        int y = button->select_rect.y + button->select_rect.h/2;
-        if      (x < 0)             x = 0;
-        else if (x >= screen_width) x = screen_width-1;
-        if      (y < 0)              y = 0;
-        else if (y >= screen_height) y = screen_height-1;
+        int script_x = button->select_rect.x + button->select_rect.w/2;
+        int script_y = button->select_rect.y + button->select_rect.h/2;
+        if      (script_x < 0)             script_x = 0;
+        else if (script_x >= screen_width) script_x = screen_width-1;
+        if      (script_y < 0)              script_y = 0;
+        else if (script_y >= screen_height) script_y = screen_height-1;
 
-        x = x * screen_device_width / screen_width + render_view_rect.x;
-        y = y * screen_device_height / screen_height + render_view_rect.y;
+        int x = script_x * screen_device_width / screen_width + render_view_rect.x;
+        int y = script_y * screen_device_height / screen_height + render_view_rect.y;
+        int win_w = screen_device_width;
+        int win_h = screen_device_height;
+        if (window) SDL_GetWindowSize(window, &win_w, &win_h);
+        if      (x < 0)       x = 0;
+        else if (x >= win_w)  x = win_w - 1;
+        if      (y < 0)       y = 0;
+        else if (y >= win_h)  y = win_h - 1;
 
         shift_over_button = button->no;
+        /* Important: update button-hover state directly, do not rely only on OS cursor warp. */
+        mouseOverCheck(script_x, script_y);
+        utils::printInfo("shiftCursorOnButton: target button=%d over=%d warp=(%d,%d) script=(%d,%d)\n",
+                         shift_over_button, current_over_button, x, y, script_x, script_y);
         warpMouse(x, y);
     }
 }
@@ -788,6 +823,16 @@ bool ONScripter::keyPressEvent( SDL_KeyboardEvent *event )
 {
     current_button_state.button = 0;
     current_button_state.down_flag = false;
+    if (event->keysym.sym == SDLK_UP || event->keysym.sym == SDLK_DOWN ||
+        event->keysym.sym == SDLK_LEFT || event->keysym.sym == SDLK_RIGHT ||
+        event->keysym.sym == SDLK_RETURN || event->keysym.sym == SDLK_ESCAPE ||
+        event->keysym.sym == SDLK_SPACE) {
+        utils::printInfo("keyPressEvent: type=%d sym=%d mode=0x%x getcursor=%d waitbtn=%d waittext=%d\n",
+                         (int)event->type, (int)event->keysym.sym, event_mode,
+                         getcursor_flag ? 1 : 0,
+                         (event_mode & WAIT_BUTTON_MODE) ? 1 : 0,
+                         (event_mode & WAIT_TEXT_MODE) ? 1 : 0);
+    }
     if ( automode_flag ){
         automode_flag = false;
         return false;
@@ -842,6 +887,9 @@ bool ONScripter::keyPressEvent( SDL_KeyboardEvent *event )
            ((!getenter_flag && event->keysym.sym == SDLK_RETURN) ||
             (!getenter_flag && event->keysym.sym == SDLK_KP_ENTER))) ||
           ((spclclk_flag || !useescspc_flag) && event->keysym.sym == SDLK_SPACE)) ){
+        utils::printInfo("WAIT_BUTTON select: type=%d sym=%d current_over=%d line=%d bexec=%d\n",
+                         (int)event->type, (int)event->keysym.sym,
+                         current_over_button, shortcut_mouse_line, bexec_flag ? 1 : 0);
         if ( event->keysym.sym == SDLK_RETURN ||
              event->keysym.sym == SDLK_KP_ENTER ||
              (spclclk_flag && event->keysym.sym == SDLK_SPACE) ){
@@ -1157,8 +1205,55 @@ bool ONScripter::convTouchKey(SDL_TouchFingerEvent &finger) {
 void ONScripter::runEventLoop()
 {
     SDL_Event event, tmp_event;
+    static Uint8 polled_button_state[64] = {0};
+    static int polled_button_count = -1;
+    bool use_polled_joystick_buttons = true;
+    bool logged_axis_ignored_by_hat = false;
+    auto pollJoystickButtons = [&]() -> bool {
+        if (joystick == NULL || !use_polled_joystick_buttons) {
+            polled_button_count = -1;
+            return false;
+        }
+        SDL_JoystickUpdate();
+        int count = SDL_JoystickNumButtons(joystick);
+        if (count > 64) count = 64;
+        if (polled_button_count != count) {
+            polled_button_count = count;
+            for (int i = 0; i < count; i++)
+                polled_button_state[i] = SDL_JoystickGetButton(joystick, i);
+            return false;
+        }
+        bool handled = false;
+        for (int i = 0; i < count; i++) {
+            Uint8 now = SDL_JoystickGetButton(joystick, i);
+            if (now == polled_button_state[i]) continue;
+            ONS_Key mapped = transJoystickButton((Uint8)i);
+            utils::printInfo("JOYBUTTON POLL: idx=%d state=%d mapped=%d\n", i, (int)now, (int)mapped);
+            if (mapped != SDLK_UNKNOWN) {
+                SDL_Event kev;
+                kev.key.keysym.sym = transKey(mapped);
+                kev.key.keysym.mod = 0;
+                if (now) {
+                    kev.key.type = SDL_KEYDOWN;
+                    bool ret = keyDownEvent(&kev.key);
+                    if (btndown_flag) ret |= keyPressEvent(&kev.key);
+                    if (ret) handled = true;
+                } else {
+                    kev.key.type = SDL_KEYUP;
+                    keyUpEvent(&kev.key);
+                    if (keyPressEvent(&kev.key)) handled = true;
+                }
+            }
+            polled_button_state[i] = now;
+        }
+        return handled;
+    };
 
-    while ( SDL_WaitEvent(&event) ) {
+    while ( true ) {
+        if (!SDL_WaitEventTimeout(&event, 16)) {
+            if (pollJoystickButtons()) return;
+            continue;
+        }
         tmp_event = event; // fix android long click problem
 #if defined(USE_SMPEG)
         // required to repeat the movie
@@ -1288,13 +1383,164 @@ void ONScripter::runEventLoop()
             break;
 #endif
 
+          case SDL_JOYBUTTONDOWN:
+            use_polled_joystick_buttons = false;
+            if (joystick != NULL && event.jbutton.which == SDL_JoystickInstanceID(joystick)) {
+                event.key.type = SDL_KEYDOWN;
+                event.key.keysym.sym = transJoystickButton(event.jbutton.button);
+                event.key.keysym.mod = 0;
+                utils::printInfo("JOYBUTTONDOWN: which=%d button=%d mapped=%d\n",
+                                 (int)event.jbutton.which, (int)event.jbutton.button, (int)event.key.keysym.sym);
+                if (event.key.keysym.sym != SDLK_UNKNOWN) {
+                    event.key.keysym.sym = transKey(event.key.keysym.sym);
+                    ret = keyDownEvent(&event.key);
+                    if (btndown_flag) ret |= keyPressEvent(&event.key);
+                    if (ret) return;
+                }
+            } else {
+                utils::printInfo("JOYBUTTONDOWN ignored: which=%d joy=%d\n",
+                                 (int)event.jbutton.which,
+                                 joystick != NULL ? (int)SDL_JoystickInstanceID(joystick) : -1);
+            }
+            break;
+          case SDL_JOYBUTTONUP:
+            use_polled_joystick_buttons = false;
+            if (joystick != NULL && event.jbutton.which == SDL_JoystickInstanceID(joystick)) {
+                event.key.type = SDL_KEYUP;
+                event.key.keysym.sym = transJoystickButton(event.jbutton.button);
+                event.key.keysym.mod = 0;
+                utils::printInfo("JOYBUTTONUP: which=%d button=%d mapped=%d\n",
+                                 (int)event.jbutton.which, (int)event.jbutton.button, (int)event.key.keysym.sym);
+                if (event.key.keysym.sym != SDLK_UNKNOWN) {
+                    event.key.keysym.sym = transKey(event.key.keysym.sym);
+                    keyUpEvent(&event.key);
+                    ret = keyPressEvent(&event.key);
+                    if (ret) return;
+                }
+            }
+            break;
+          case SDL_JOYHATMOTION: {
+            if (joystick != NULL && event.jhat.which == SDL_JoystickInstanceID(joystick) && event.jhat.hat == 0) {
+                static Uint8 prev_hat = 0;
+                Uint8 hat = event.jhat.value;
+                utils::printInfo("JOYHATMOTION: which=%d hat=%d value=0x%x prev=0x%x\n",
+                                 (int)event.jhat.which, (int)event.jhat.hat, (unsigned int)hat, (unsigned int)prev_hat);
+                auto dpadKey = [&](Uint8 mask, ONS_Key k) {
+                    if ((hat & mask) != (prev_hat & mask)) {
+                        SDL_Event kev;
+                        kev.key.keysym.sym = transKey(k);
+                        kev.key.keysym.mod = 0;
+                        if (hat & mask) {
+                            kev.key.type = SDL_KEYDOWN;
+                            ret = keyDownEvent(&kev.key);
+                            if (btndown_flag) ret |= keyPressEvent(&kev.key);
+                        } else {
+                            kev.key.type = SDL_KEYUP;
+                            keyUpEvent(&kev.key);
+                            ret = keyPressEvent(&kev.key);
+                        }
+                    }
+                };
+                dpadKey(SDL_HAT_UP, SDLK_UP);
+                dpadKey(SDL_HAT_DOWN, SDLK_DOWN);
+                dpadKey(SDL_HAT_LEFT, SDLK_LEFT);
+                dpadKey(SDL_HAT_RIGHT, SDLK_RIGHT);
+                prev_hat = hat;
+                if (ret) return;
+            }
+            break;
+          }
+          case SDL_JOYAXISMOTION: {
+            /* 左摇杆轴 -> 方向键（掌机常用轴 0=水平 1=垂直） */
+            if (joystick == NULL || event.jaxis.which != SDL_JoystickInstanceID(joystick))
+                break;
+            if (SDL_JoystickNumHats(joystick) > 0) {
+                if (!logged_axis_ignored_by_hat) {
+                    utils::printInfo("JOYAXISMOTION ignored: device has HAT, use HAT for dpad\n");
+                    logged_axis_ignored_by_hat = true;
+                }
+                break;
+            }
+#define ONS_JOY_AXIS_DEADZONE (32767 * 20 / 100)  /* 20% 死区 */
+            static Sint16 joy_axis0 = 0, joy_axis1 = 0;
+            static bool axis_left = false, axis_right = false, axis_up = false, axis_down = false;
+            utils::printInfo("JOYAXISMOTION: which=%d axis=%d value=%d\n",
+                             (int)event.jaxis.which, (int)event.jaxis.axis, (int)event.jaxis.value);
+            if (event.jaxis.axis == 0)
+                joy_axis0 = event.jaxis.value;
+            else if (event.jaxis.axis == 1)
+                joy_axis1 = event.jaxis.value;
+            else
+                break;
+            bool new_left = (joy_axis0 < -ONS_JOY_AXIS_DEADZONE);
+            bool new_right = (joy_axis0 > ONS_JOY_AXIS_DEADZONE);
+            bool new_down = (joy_axis1 > ONS_JOY_AXIS_DEADZONE);   /* SDL Y 轴正多为下 */
+            bool new_up = (joy_axis1 < -ONS_JOY_AXIS_DEADZONE);
+            auto sendAxisKey = [&](bool now, bool &prev, ONS_Key k) {
+                if (now != prev) {
+                    SDL_Event kev;
+                    kev.key.keysym.sym = transKey(k);
+                    kev.key.keysym.mod = 0;
+                    if (now) {
+                        kev.key.type = SDL_KEYDOWN;
+                        ret = keyDownEvent(&kev.key);
+                        if (btndown_flag) ret |= keyPressEvent(&kev.key);
+                    } else {
+                        kev.key.type = SDL_KEYUP;
+                        keyUpEvent(&kev.key);
+                        ret = keyPressEvent(&kev.key);
+                    }
+                    prev = now;
+                }
+            };
+            sendAxisKey(new_left, axis_left, SDLK_LEFT);
+            if (ret) return;
+            sendAxisKey(new_right, axis_right, SDLK_RIGHT);
+            if (ret) return;
+            sendAxisKey(new_up, axis_up, SDLK_UP);
+            if (ret) return;
+            sendAxisKey(new_down, axis_down, SDLK_DOWN);
+            break;
+          }
+          case SDL_JOYDEVICEADDED:
+            /* 掌机常见：启动时 NumJoysticks()==0，稍后才触发 JOYDEVICEADDED */
+            utils::printInfo("JOYDEVICEADDED: which(index)=%d num=%d\n", event.jdevice.which, SDL_NumJoysticks());
+            use_polled_joystick_buttons = true;
+            logged_axis_ignored_by_hat = false;
+            if (controller == NULL && joystick == NULL) {
+                joystick = SDL_JoystickOpen(event.jdevice.which);
+                if (joystick != NULL) {
+                    const char *name = SDL_JoystickName(joystick);
+                    utils::printInfo("Joystick added (index %d): %s, axes=%d buttons=%d hats=%d\n",
+                                     event.jdevice.which, name ? name : "unknown",
+                                     SDL_JoystickNumAxes(joystick),
+                                     SDL_JoystickNumButtons(joystick),
+                                     SDL_JoystickNumHats(joystick));
+                }
+            }
+            break;
+          case SDL_JOYDEVICEREMOVED:
+            if (joystick != NULL && event.jdevice.which == (SDL_JoystickID)SDL_JoystickInstanceID(joystick)) {
+                SDL_JoystickClose(joystick);
+                joystick = NULL;
+                utils::printInfo("Joystick removed\n");
+            }
+            use_polled_joystick_buttons = true;
+            logged_axis_ignored_by_hat = false;
+            break;
           case SDL_CONTROLLERDEVICEADDED:
             utils::printInfo("Open GameController %d\n", event.cdevice.which);
+            if (joystick != NULL) {
+                SDL_JoystickClose(joystick);
+                joystick = NULL;
+            }
             if (controller != NULL) {
                 SDL_GameControllerClose(controller);
                 controller = NULL;
             }
             controller = SDL_GameControllerOpen(event.cdevice.which);
+            if (controller == NULL)
+                utils::printInfo("GameController open failed: %s\n", SDL_GetError());
             break;
 
           case SDL_CONTROLLERDEVICEREMOVED:
@@ -1309,10 +1555,16 @@ void ONScripter::runEventLoop()
             event.key.type = SDL_KEYDOWN;
             event.key.keysym.sym = transControllerButton(event.cbutton.button);
             event.key.keysym.mod = 0;
+            utils::printInfo("CONTROLLERBUTTONDOWN: which=%d button=%d mapped=%d\n",
+                             (int)event.cbutton.which, (int)event.cbutton.button, (int)event.key.keysym.sym);
             if(event.key.keysym.sym == SDLK_UNKNOWN)
                 break;
 
           case SDL_KEYDOWN:
+            utils::printInfo("SDL_KEYDOWN raw: sym=%d scancode=%d mod=0x%x\n",
+                             (int)event.key.keysym.sym,
+                             (int)event.key.keysym.scancode,
+                             (unsigned int)event.key.keysym.mod);
             event.key.keysym.sym = transKey(event.key.keysym.sym);
             ret = keyDownEvent( &event.key );
             if ( btndown_flag )
@@ -1324,10 +1576,16 @@ void ONScripter::runEventLoop()
             event.key.type = SDL_KEYUP;
             event.key.keysym.sym = transControllerButton(event.cbutton.button);
             event.key.keysym.mod = 0;
+            utils::printInfo("CONTROLLERBUTTONUP: which=%d button=%d mapped=%d\n",
+                             (int)event.cbutton.which, (int)event.cbutton.button, (int)event.key.keysym.sym);
             if(event.key.keysym.sym == SDLK_UNKNOWN)
                 break;
 
           case SDL_KEYUP:
+            utils::printInfo("SDL_KEYUP raw: sym=%d scancode=%d mod=0x%x\n",
+                             (int)event.key.keysym.sym,
+                             (int)event.key.keysym.scancode,
+                             (unsigned int)event.key.keysym.mod);
             event.key.keysym.sym = transKey(event.key.keysym.sym);
             keyUpEvent( &event.key );
             ret = keyPressEvent( &event.key );
@@ -1427,5 +1685,6 @@ void ONScripter::runEventLoop()
           default:
             break;
         }
+        if (pollJoystickButtons()) return;
     }
 }

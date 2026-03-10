@@ -133,7 +133,7 @@ void ONScripter::initSDL()
     /* ---------------------------------------- */
     /* Initialize SDL */
 
-    if ( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_TIMER  ) < 0 ){
+    if ( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER) < 0 ){
         utils::printError("Couldn't initialize SDL: %s\n", SDL_GetError());
         exit(-1);
     }
@@ -156,9 +156,26 @@ void ONScripter::initSDL()
 #endif
     if(SDL_InitSubSystem( SDL_INIT_GAMECONTROLLER ) == 0)
         utils::printInfo("Initialize GameController\n");
+    utils::printInfo("SDL_NumJoysticks at init: %d\n", SDL_NumJoysticks());
     controller = SDL_GameControllerOpen(0);
-    if(controller != NULL)
+    joystick = NULL;
+    if(controller != NULL) {
         utils::printInfo("GameController found\n");
+    } else if (SDL_NumJoysticks() > 0) {
+        joystick = SDL_JoystickOpen(0);
+        if (joystick != NULL) {
+            utils::printInfo("Joystick fallback opened (index 0)\n");
+            utils::printInfo("Joystick info: name=%s axes=%d buttons=%d hats=%d\n",
+                             SDL_JoystickName(joystick) ? SDL_JoystickName(joystick) : "unknown",
+                             SDL_JoystickNumAxes(joystick),
+                             SDL_JoystickNumButtons(joystick),
+                             SDL_JoystickNumHats(joystick));
+        }
+    }
+    /* 必须启用摇杆事件，否则部分平台收不到 JOYBUTTON/JOYHAT/JOYAXISMOTION */
+    SDL_JoystickEventState(SDL_ENABLE);
+    utils::printInfo("SDL_JoystickEventState: %s\n",
+                     SDL_JoystickEventState(SDL_QUERY) == SDL_ENABLE ? "enabled" : "disabled");
 #endif
 
     /* ---------------------------------------- */
@@ -373,6 +390,8 @@ ONScripter::ONScripter()
     fullscreen_mode = false;
     stretch_mode = false;
     window_mode = false;
+    controller = NULL;
+    joystick = NULL;
     sprite_info  = new AnimationInfo[MAX_SPRITE_NUM];
     sprite2_info = new AnimationInfo[MAX_SPRITE2_NUM];
     texture_info = new AnimationInfo[MAX_TEXTURE_NUM];
