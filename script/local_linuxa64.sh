@@ -31,20 +31,20 @@ cmake -B $BUILD_PATH -S $CMAKELISTS_PATH \
 
 make -C $BUILD_PATH $TARGETS -j$CORE_NUM
 
-# 构建完成后，将依赖的共享库拷贝到输出目录的 lib 文件夹
-if [ -x "$BUILD_PATH/onsyuri" ]; then
-    mkdir -p "$BUILD_PATH/lib"
-    echo "Copying dependent libraries to $BUILD_PATH/lib ..."
-    ldd "$BUILD_PATH/onsyuri" 2>/dev/null | grep "=>" | awk '{print $3}' | while read -r so; do
-        if [ -n "$so" ] && [ -f "$so" ]; then
-            case "$(basename "$so")" in
-                libc.so*|libm.so*|libdl.so*|libpthread.so*|ld-linux*.so*)
-                    ;;
-                *)
-                    cp -L -n "$so" "$BUILD_PATH/lib/" 2>/dev/null && echo "  $(basename "$so")" || true
-                    ;;
-            esac
-        fi
-    done
-    echo "Done."
-fi
+# 构建完成后，将依赖的共享库拷贝到输出目录的 lib 文件夹（已关闭，需要时可设 COPY_DEPS=yes 启用）
+# if [ -x "$BUILD_PATH/onsyuri" ]; then
+#     mkdir -p "$BUILD_PATH/lib"
+#     echo "Copying dependent libraries to $BUILD_PATH/lib ..."
+#     ldd "$BUILD_PATH/onsyuri" 2>/dev/null | grep "=>" | awk '{print $3}' | while read -r so; do
+#         if [ -n "$so" ] && [ -f "$so" ]; then
+#             case "$(basename "$so")" in
+#                 libc.so*|libm.so*|libdl.so*|libpthread.so*|ld-linux*.so*)
+#                     ;;
+#                 *)
+#                     cp -L -n "$so" "$BUILD_PATH/lib/" 2>/dev/null && echo "  $(basename "$so")" || true
+#                     ;;
+#             esac
+#         fi
+#     done
+#     echo "Done."
+# fi

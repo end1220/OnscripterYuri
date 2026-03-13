@@ -539,3 +539,5 @@ set(ONSYURI_DEFINES
     ENABLE_1BYTE_CHAR
 )
 config_platform(${PROJECT_NAME})
+
+add_subdirectory(launcher)
