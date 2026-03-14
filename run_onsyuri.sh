@@ -21,9 +21,6 @@ SAVE_DIR="$GAME_DIR/save"
 
 FONT="$GAME_DIR/default.ttf"
 
-# 脚本编码：utf8 / gbk / sjis
-ENC="utf8"
-
 # ========== 启动参数 ==========
 # 全屏拉伸模式（F10 切换），适配掌机屏幕
 # --fullscreen2 全屏拉伸
@@ -53,6 +50,6 @@ EXTRA_ARGS=()
 [ -n "$SAVE_DIR" ] && EXTRA_ARGS+=(--save-dir "$SAVE_DIR")
 [ -n "$FONT" ] && [ -f "$FONT" ] && EXTRA_ARGS+=(--font "$FONT")
 
-"$ONSYURI" --root "$GAME_DIR" --enc:"$ENC" "${EXTRA_ARGS[@]}" $OPTS "$@" > "$LOG_FILE" 2>&1
+"$ONSYURI" --root "$GAME_DIR" "${EXTRA_ARGS[@]}" $OPTS "$@" > "$LOG_FILE" 2>&1
 
 echo "onsyuri completed" > /dev/tty0

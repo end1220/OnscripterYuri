@@ -273,11 +273,11 @@ static const int ROW_HEIGHT = 170;   // 每行绘制高度
 static const int ROW_GAP = 5;        // 两个条目之间的间距
 static const int SLOT_HEIGHT = ROW_HEIGHT + ROW_GAP;
 
-// Galgame 粉红桃色配色（可在此修改）
-static const SDL_Color COLOR_BG = {45, 25, 45, 255};           // 背景
-static const SDL_Color COLOR_TEXT = {255, 220, 230, 255};      // 未选中文字
-static const SDL_Color COLOR_TEXT_SEL = {255, 182, 193, 255};  // 选中文字
-static const SDL_Color COLOR_ROW_SEL = {90, 50, 75, 255};      // 选中行背景
+// Galgame 粉红桃色配色（可在此修改，已提高明度亮度）
+static const SDL_Color COLOR_BG = {65, 45, 65, 255};           // 背景
+static const SDL_Color COLOR_TEXT = {255, 240, 248, 255};      // 未选中文字（淡粉）
+static const SDL_Color COLOR_TEXT_SEL = {255, 205, 225, 255};  // 选中文字（桃粉）
+static const SDL_Color COLOR_ROW_SEL = {130, 85, 115, 255};    // 选中行背景
 static const SDL_Color COLOR_ICON_PLACEHOLDER = {255, 255, 255, 255};  // 无图标占位（纯白）
 
 void MenuUI::render(const std::vector<GameEntry> &games, int selected) {
@@ -314,7 +314,28 @@ void MenuUI::render(const std::vector<GameEntry> &games, int selected) {
             SDL_RenderFillRect(renderer_, &bg);
         }
 
-        int x = 24;
+        // 序号：距左边 20px，与图标间隔 20px
+        static const int INDEX_LEFT = 20;
+        static const int INDEX_ICON_GAP = 20;
+        char indexBuf[16];
+        snprintf(indexBuf, sizeof(indexBuf), "%zu", i + 1);
+        SDL_Surface *idxSurf = TTF_RenderUTF8_Blended(font_, indexBuf, color);
+        int indexW = 0;
+        if (idxSurf) {
+            indexW = idxSurf->w;
+            SDL_Texture *idxTex = SDL_CreateTextureFromSurface(renderer_, idxSurf);
+            SDL_FreeSurface(idxSurf);
+            if (idxTex) {
+                int indexH = 0;
+                SDL_QueryTexture(idxTex, nullptr, nullptr, nullptr, &indexH);
+                int indexY = y + (ROW_HEIGHT - indexH) / 2;
+                SDL_Rect idxDst = {INDEX_LEFT, indexY, indexW, indexH};
+                SDL_RenderCopy(renderer_, idxTex, nullptr, &idxDst);
+                SDL_DestroyTexture(idxTex);
+            }
+        }
+
+        int x = INDEX_LEFT + indexW + INDEX_ICON_GAP;
         int iconY = y + (ROW_HEIGHT - ICON_SIZE) / 2;  // icon 垂直居中
         SDL_Texture *iconTex = getIconTexture(games[i].iconPath);
         if (iconTex) {

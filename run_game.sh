@@ -80,6 +80,6 @@ if [[ -f "$FONT" ]]; then
     EXTRA_ARGS+=(--font "$FONT")
 fi
 
-"$ONSYURI" --root "$GAME_DIR" --enc:"$ENC" "${EXTRA_ARGS[@]}" "${PASS_ARGS[@]}" >"$LOG_FILE" 2>&1
+"$ONSYURI" --root "$GAME_DIR" "${EXTRA_ARGS[@]}" "${PASS_ARGS[@]}" >"$LOG_FILE" 2>&1
 exit $?
 
