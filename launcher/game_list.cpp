@@ -12,19 +12,60 @@ static bool isDirectory(const std::string &path) {
     return S_ISDIR(st.st_mode);
 }
 
-static std::string readTitleFromFile(const std::string &path) {
-    FILE *fp = std::fopen(path.c_str(), "r");
-    if (!fp) return "";
-    char buf[256];
-    std::string title;
-    if (std::fgets(buf, sizeof(buf), fp)) {
-        size_t len = std::strlen(buf);
-        while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r'))
-            buf[--len] = '\0';
-        if (len > 0) title = buf;
+static bool isRegularFile(const std::string &path) {
+    struct stat st {};
+    if (stat(path.c_str(), &st) != 0) return false;
+    return S_ISREG(st.st_mode);
+}
+
+/** 检查子目录中是否存在 .nsa 后缀的文件 */
+static bool hasNsaFile(const std::string &dirPath) {
+    DIR *dir = opendir(dirPath.c_str());
+    if (!dir) return false;
+    bool found = false;
+    struct dirent *ent;
+    while ((ent = readdir(dir)) != nullptr) {
+        if (ent->d_name[0] == '.') continue;
+        std::string name = ent->d_name;
+        size_t len = name.size();
+        if (len < 4) continue;
+        if (name.compare(len - 4, 4, ".nsa") == 0) {
+            std::string full = dirPath + "/" + name;
+            if (isRegularFile(full)) {
+                found = true;
+                break;
+            }
+        }
     }
-    std::fclose(fp);
-    return title;
+    closedir(dir);
+    return found;
+}
+
+/** 按优先级查找游戏图标：icon.png -> logo.png -> 子目录内任意 .png 文件 */
+static std::string findGameIcon(const std::string &dirPath) {
+    if (isRegularFile(dirPath + "/icon.png"))
+        return dirPath + "/icon.png";
+    if (isRegularFile(dirPath + "/logo.png"))
+        return dirPath + "/logo.png";
+    DIR *dir = opendir(dirPath.c_str());
+    if (!dir) return "";
+    std::string found;
+    struct dirent *ent;
+    while ((ent = readdir(dir)) != nullptr) {
+        if (ent->d_name[0] == '.') continue;
+        std::string name = ent->d_name;
+        size_t len = name.size();
+        if (len < 4) continue;
+        if (name.compare(len - 4, 4, ".png") == 0) {
+            std::string full = dirPath + "/" + name;
+            if (isRegularFile(full)) {
+                found = full;
+                break;
+            }
+        }
+    }
+    closedir(dir);
+    return found;
 }
 
 std::vector<GameEntry> scanGames(const std::string &root) {
@@ -39,11 +80,11 @@ std::vector<GameEntry> scanGames(const std::string &root) {
         std::string sub = root + "/" + ent->d_name;
         if (!isDirectory(sub)) continue;
 
-        std::string title = ent->d_name;
-        std::string fromFile = readTitleFromFile(sub + "/title.txt");
-        if (!fromFile.empty()) title = fromFile;
+        if (!hasNsaFile(sub)) continue;
 
-        games.push_back(GameEntry{title, sub + "/"});
+        std::string name = ent->d_name;
+        std::string iconPath = findGameIcon(sub);
+        games.push_back(GameEntry{name, sub + "/", iconPath});
     }
     closedir(dir);
 

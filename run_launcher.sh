@@ -11,6 +11,7 @@ export LD_LIBRARY_PATH="$SCRIPT_DIR/ONScripter/lib${LD_LIBRARY_PATH:+:$LD_LIBRAR
 "$ONS_DIR/onsyuri_launcher" \
     --onsyuri "$ONS_DIR/onsyuri" \
     --games-root "$GAME_ROOT" \
+    --launch-script "$SCRIPT_DIR/run_onsyuri_from_launcher.sh" \
     --font "$ONS_DIR/default.ttf" \
     --pass-arg "--fullscreen2" --pass-arg "--sharpness" --pass-arg "3.1" \
     "$@" >"$ONS_DIR/log_launcher.txt" 2>&1

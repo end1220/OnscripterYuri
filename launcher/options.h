@@ -10,6 +10,7 @@ struct Options {
     std::string onsyuriPath;
     std::string gamesRoot;
     std::string fontPath;
+    std::string launchScriptPath;
     std::string enc = "utf8";
     std::vector<std::string> passArgs;
 };

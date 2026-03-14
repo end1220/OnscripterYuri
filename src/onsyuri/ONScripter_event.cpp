@@ -160,8 +160,8 @@ static ONS_Key transJoystickButton(Uint8 button)
 ONS_Key transControllerButton(Uint8 button)
 {
     ONS_Key button_map[SDL_CONTROLLER_BUTTON_MAX] = {
-        SDLK_RETURN,            /* A */
-        SDLK_ESCAPE,            /* B */
+        SDLK_ESCAPE,            /* A - swapped for Nintendo-style handhelds */
+        SDLK_RETURN,            /* B */
         SDLK_RCTRL,             /* X */
         SDLK_SPACE,             /* Y */
         SDLK_0,                 /* BACK */
