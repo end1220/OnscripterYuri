@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
+#include <csignal>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -10,6 +11,20 @@ static void ensureSaveDir(const std::string &path) {
     struct stat st {};
     if (stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) return;
     mkdir(path.c_str(), 0777);
+}
+
+void stopOtherLauncherProcesses() {
+    pid_t self = getpid();
+    FILE *fp = popen("pgrep -x onsyuri_launcher 2>/dev/null", "r");
+    if (!fp) return;
+    char buf[64];
+    while (fgets(buf, sizeof(buf), fp)) {
+        pid_t pid = static_cast<pid_t>(std::atoi(buf));
+        if (pid > 0 && pid != self)
+            kill(pid, SIGTERM);
+    }
+    pclose(fp);
+    usleep(200 * 1000);
 }
 
 static void stopExistingOnsyuriProcesses() {

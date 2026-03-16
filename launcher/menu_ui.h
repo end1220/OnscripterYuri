@@ -23,6 +23,12 @@ public:
     int run(const std::vector<GameEntry> &games);
 
 private:
+    struct TextCacheEntry {
+        SDL_Texture *texture = nullptr;
+        int width = 0;
+        int height = 0;
+    };
+
     void handleKey(SDL_Keycode sym, int &selected, int count, bool &confirm, bool &quit);
     void handleControllerButton(Uint8 button, int &selected, int count, bool &confirm, bool &quit);
     void handleControllerAxis(Sint16 value, int &selected, int count);
@@ -36,6 +42,11 @@ private:
     void handleDeviceRemoved(Sint32 instanceId);
     void render(const std::vector<GameEntry> &games, int selected);
     SDL_Texture *getIconTexture(const std::string &iconPath);
+    SDL_Texture *getTextTexture(const std::string &cacheKey,
+                                const std::string &text,
+                                const SDL_Color &color,
+                                int &outW,
+                                int &outH);
 
     SDL_Window *window_ = nullptr;
     SDL_Renderer *renderer_ = nullptr;
@@ -49,6 +60,7 @@ private:
     static const int AXIS_DEADZONE = 16000;
     static const Uint32 SELECT_DEBOUNCE_MS = 150;
     std::unordered_map<std::string, SDL_Texture *> iconCache_;  // iconPath -> 缓存的 150x150 纹理
+    std::unordered_map<std::string, TextCacheEntry> textCache_; // 文本纹理缓存（按文字+颜色）
 };
 
 #endif

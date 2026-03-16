@@ -1643,10 +1643,14 @@ void ONScripter::runEventLoop()
                   repaintCommand();
                   break;
               case SDL_WINDOWEVENT_FOCUS_LOST:
-#if defined(_DEBUG) // fix background music
+                  // 窗口进入后台：保存到 0 号槽，并请求退出程序。
                   Mix_Pause(-1);
                   Mix_PauseMusic();
-#endif
+                  storeSaveFile();
+                  writeSaveFile(0, "autosave");
+                  SDL_Event quit_event;
+                  quit_event.type = SDL_QUIT;
+                  SDL_PushEvent(&quit_event);
                   // the mouse cursor leaves the window
                   SDL_MouseMotionEvent mevent;
                   mevent.x = screen_device_width;
@@ -1667,6 +1671,14 @@ void ONScripter::runEventLoop()
 #if defined(USE_GLES)
                 if(gles_renderer) gles_renderer->pause();
 #endif
+                // 应用级进入后台：保存到 0 号槽，并请求退出程序。
+                Mix_Pause(-1);
+                Mix_PauseMusic();
+                storeSaveFile();
+                writeSaveFile(0, "autosave");
+                SDL_Event quit_event2;
+                quit_event2.type = SDL_QUIT;
+                SDL_PushEvent(&quit_event2);
               break;
           case SDL_APP_DIDENTERFOREGROUND:
 #if defined(ANDROID)

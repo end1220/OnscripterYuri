@@ -6,6 +6,7 @@
 
 int main(int argc, char *argv[]) {
     std::fprintf(stderr, "[Launcher] main: start argc=%d\n", argc);
+    stopOtherLauncherProcesses();
     Options opt;
     if (!parseArgs(argc, argv, opt)) return 1;
     std::fprintf(stderr, "[Launcher] main: parsed onsyuri=%s gamesRoot=%s launchScript=%s enc=%s passArgs=%zu\n",

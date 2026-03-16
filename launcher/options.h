@@ -19,4 +19,7 @@ bool parseArgs(int argc, char *argv[], Options &opt);
 
 int launchGame(const Options &opt, const GameEntry &game);
 
+/** 启动时关闭其他 onsyuri_launcher 进程，保证单实例。 */
+void stopOtherLauncherProcesses();
+
 #endif

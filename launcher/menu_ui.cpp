@@ -150,6 +150,10 @@ void MenuUI::shutdown() {
         if (p.second) SDL_DestroyTexture(p.second);
     }
     iconCache_.clear();
+    for (auto &p : textCache_) {
+        if (p.second.texture) SDL_DestroyTexture(p.second.texture);
+    }
+    textCache_.clear();
     if (font_) {
         TTF_CloseFont(font_);
         font_ = nullptr;
@@ -217,6 +221,49 @@ SDL_Texture *MenuUI::getIconTexture(const std::string &iconPath) {
     SDL_FreeSurface(surf);
     if (!tex) return nullptr;
     iconCache_[iconPath] = tex;
+    return tex;
+}
+
+SDL_Texture *MenuUI::getTextTexture(const std::string &cacheKey,
+                                    const std::string &text,
+                                    const SDL_Color &color,
+                                    int &outW,
+                                    int &outH) {
+    auto it = textCache_.find(cacheKey);
+    if (it != textCache_.end()) {
+        outW = it->second.width;
+        outH = it->second.height;
+        return it->second.texture;
+    }
+
+    if (!font_) {
+        outW = outH = 0;
+        return nullptr;
+    }
+
+    SDL_Surface *surf = TTF_RenderUTF8_Blended(font_, text.c_str(), color);
+    if (!surf) {
+        outW = outH = 0;
+        return nullptr;
+    }
+
+    SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer_, surf);
+    if (!tex) {
+        SDL_FreeSurface(surf);
+        outW = outH = 0;
+        return nullptr;
+    }
+
+    TextCacheEntry entry;
+    entry.texture = tex;
+    entry.width = surf->w;
+    entry.height = surf->h;
+    textCache_[cacheKey] = entry;
+
+    outW = entry.width;
+    outH = entry.height;
+
+    SDL_FreeSurface(surf);
     return tex;
 }
 
@@ -299,40 +346,44 @@ void MenuUI::render(const std::vector<GameEntry> &games, int selected) {
     if (scrollOffset_ > maxScroll) scrollOffset_ = maxScroll;
 
     const int baseY = 20;
-    for (std::size_t i = 0; i < games.size(); ++i) {
-        int y = baseY + static_cast<int>(i) * SLOT_HEIGHT - scrollOffset_;
-        SDL_Color color = COLOR_TEXT;
-        if (static_cast<int>(i) == selected) color = COLOR_TEXT_SEL;
+    // 只遍历可见行区间，长列表时减少循环与缓存查找次数
+    int startIndex = (scrollOffset_ - baseY - ROW_HEIGHT) / SLOT_HEIGHT + 1;
+    if (startIndex < 0) startIndex = 0;
+    int endIndex = (windowH + scrollOffset_ - baseY) / SLOT_HEIGHT;
+    const int count = static_cast<int>(games.size());
+    if (endIndex >= count) endIndex = count - 1;
+    if (startIndex > endIndex) { SDL_RenderPresent(renderer_); return; }
+
+    for (int i = startIndex; i <= endIndex; ++i) {
+        int y = baseY + i * SLOT_HEIGHT - scrollOffset_;
+        bool isSelected = (i == selected);
+        SDL_Color color = isSelected ? COLOR_TEXT_SEL : COLOR_TEXT;
 
         int rowH = ROW_HEIGHT;
-        if (y + rowH < 0 || y > windowH)
-            continue;
 
-        if (static_cast<int>(i) == selected) {
+        if (i == selected) {
             SDL_SetRenderDrawColor(renderer_, COLOR_ROW_SEL.r, COLOR_ROW_SEL.g, COLOR_ROW_SEL.b, COLOR_ROW_SEL.a);
             SDL_Rect bg = {20, y, windowW - 40, rowH};
             SDL_RenderFillRect(renderer_, &bg);
         }
 
         // 序号：距左边 20px，与图标间隔 20px
-        static const int INDEX_LEFT = 20;
-        static const int INDEX_ICON_GAP = 20;
+        static const int INDEX_LEFT = 50;
+        static const int INDEX_ICON_GAP = 50;
         char indexBuf[16];
-        snprintf(indexBuf, sizeof(indexBuf), "%zu", i + 1);
-        SDL_Surface *idxSurf = TTF_RenderUTF8_Blended(font_, indexBuf, color);
+        snprintf(indexBuf, sizeof(indexBuf), "%d", i + 1);
         int indexW = 0;
-        if (idxSurf) {
-            indexW = idxSurf->w;
-            SDL_Texture *idxTex = SDL_CreateTextureFromSurface(renderer_, idxSurf);
-            SDL_FreeSurface(idxSurf);
-            if (idxTex) {
-                int indexH = 0;
-                SDL_QueryTexture(idxTex, nullptr, nullptr, nullptr, &indexH);
-                int indexY = y + (ROW_HEIGHT - indexH) / 2;
-                SDL_Rect idxDst = {INDEX_LEFT, indexY, indexW, indexH};
-                SDL_RenderCopy(renderer_, idxTex, nullptr, &idxDst);
-                SDL_DestroyTexture(idxTex);
-            }
+        int indexH = 0;
+        std::string indexKey = std::string("idx:") + indexBuf +
+                               ":" + std::to_string(static_cast<int>(color.r)) +
+                               "," + std::to_string(static_cast<int>(color.g)) +
+                               "," + std::to_string(static_cast<int>(color.b)) +
+                               "," + std::to_string(static_cast<int>(color.a));
+        SDL_Texture *idxTex = getTextTexture(indexKey, indexBuf, color, indexW, indexH);
+        if (idxTex && indexW > 0 && indexH > 0) {
+            int indexY = y + (ROW_HEIGHT - indexH) / 2;
+            SDL_Rect idxDst = {INDEX_LEFT, indexY, indexW, indexH};
+            SDL_RenderCopy(renderer_, idxTex, nullptr, &idxDst);
         }
 
         int x = INDEX_LEFT + indexW + INDEX_ICON_GAP;
@@ -348,18 +399,20 @@ void MenuUI::render(const std::vector<GameEntry> &games, int selected) {
         }
         x += ICON_SIZE + ICON_TEXT_GAP;
 
-        SDL_Surface *surf = TTF_RenderUTF8_Blended(font_, games[i].name.c_str(), color);
-        if (surf) {
-            int textW = surf->w, textH = surf->h;
-            SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer_, surf);
-            SDL_FreeSurface(surf);
-            if (tex) {
-                int textY = y + (ROW_HEIGHT - textH) / 2;  // 文字垂直居中
-                if (textY < y) textY = y;
-                SDL_Rect dst = {x, textY, textW, textH};
-                SDL_RenderCopy(renderer_, tex, nullptr, &dst);
-                SDL_DestroyTexture(tex);
-            }
+        int textW = 0;
+        int textH = 0;
+        const std::string &nameText = games[i].name;
+        std::string nameKey = std::string("name:") + nameText +
+                              ":" + std::to_string(static_cast<int>(color.r)) +
+                              "," + std::to_string(static_cast<int>(color.g)) +
+                              "," + std::to_string(static_cast<int>(color.b)) +
+                              "," + std::to_string(static_cast<int>(color.a));
+        SDL_Texture *tex = getTextTexture(nameKey, nameText, color, textW, textH);
+        if (tex && textW > 0 && textH > 0) {
+            int textY = y + (ROW_HEIGHT - textH) / 2;  // 文字垂直居中
+            if (textY < y) textY = y;
+            SDL_Rect dst = {x, textY, textW, textH};
+            SDL_RenderCopy(renderer_, tex, nullptr, &dst);
         }
     }
 
@@ -386,6 +439,17 @@ int MenuUI::run(const std::vector<GameEntry> &games) {
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) {
+                quit = true;
+                break;
+            }
+            if (e.type == SDL_WINDOWEVENT &&
+                e.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
+                std::fprintf(stderr, "[Launcher] FOCUS_LOST -> exit\n");
+                quit = true;
+                break;
+            }
+            if (e.type == SDL_APP_WILLENTERBACKGROUND) {
+                std::fprintf(stderr, "[Launcher] WILLENTERBACKGROUND -> exit\n");
                 quit = true;
                 break;
             }
@@ -464,6 +528,6 @@ int MenuUI::run(const std::vector<GameEntry> &games) {
         }
 
         render(games, selected);
-        SDL_Delay(16);
+        SDL_Delay(50); // 约 20 FPS
     }
 }
