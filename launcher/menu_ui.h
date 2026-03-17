@@ -50,7 +50,8 @@ private:
 
     SDL_Window *window_ = nullptr;
     SDL_Renderer *renderer_ = nullptr;
-    TTF_Font *font_ = nullptr;
+    TTF_Font *font_ = nullptr;       // 游戏列表文字字体
+    TTF_Font *titleFont_ = nullptr;  // 顶部标题字体
     SDL_GameController *controller_ = nullptr;
     SDL_Joystick *joystick_ = nullptr;
     std::string fontPath_;

@@ -692,12 +692,10 @@ void ONScripter::shiftCursorOnButton( int diff )
     ButtonLink *button = root_button_link.next;
     for (num=0 ; button ; num++) 
         button = button->next;
-    utils::printInfo("shiftCursorOnButton: diff=%d num=%d line(before)=%d\n", diff, num, shortcut_mouse_line);
 
     shortcut_mouse_line += diff;
     if      (shortcut_mouse_line < 0)    shortcut_mouse_line = num-1;
     else if (shortcut_mouse_line >= num) shortcut_mouse_line = 0;
-    utils::printInfo("shiftCursorOnButton: line(after)=%d\n", shortcut_mouse_line);
 
     button = root_button_link.next;
     for (int i=0 ; i<shortcut_mouse_line ; i++) 
@@ -724,8 +722,6 @@ void ONScripter::shiftCursorOnButton( int diff )
         shift_over_button = button->no;
         /* Important: update button-hover state directly, do not rely only on OS cursor warp. */
         mouseOverCheck(script_x, script_y);
-        utils::printInfo("shiftCursorOnButton: target button=%d over=%d warp=(%d,%d) script=(%d,%d)\n",
-                         shift_over_button, current_over_button, x, y, script_x, script_y);
         warpMouse(x, y);
     }
 }
@@ -823,16 +819,6 @@ bool ONScripter::keyPressEvent( SDL_KeyboardEvent *event )
 {
     current_button_state.button = 0;
     current_button_state.down_flag = false;
-    if (event->keysym.sym == SDLK_UP || event->keysym.sym == SDLK_DOWN ||
-        event->keysym.sym == SDLK_LEFT || event->keysym.sym == SDLK_RIGHT ||
-        event->keysym.sym == SDLK_RETURN || event->keysym.sym == SDLK_ESCAPE ||
-        event->keysym.sym == SDLK_SPACE) {
-        utils::printInfo("keyPressEvent: type=%d sym=%d mode=0x%x getcursor=%d waitbtn=%d waittext=%d\n",
-                         (int)event->type, (int)event->keysym.sym, event_mode,
-                         getcursor_flag ? 1 : 0,
-                         (event_mode & WAIT_BUTTON_MODE) ? 1 : 0,
-                         (event_mode & WAIT_TEXT_MODE) ? 1 : 0);
-    }
     if ( automode_flag ){
         automode_flag = false;
         return false;
@@ -1555,16 +1541,10 @@ void ONScripter::runEventLoop()
             event.key.type = SDL_KEYDOWN;
             event.key.keysym.sym = transControllerButton(event.cbutton.button);
             event.key.keysym.mod = 0;
-            utils::printInfo("CONTROLLERBUTTONDOWN: which=%d button=%d mapped=%d\n",
-                             (int)event.cbutton.which, (int)event.cbutton.button, (int)event.key.keysym.sym);
             if(event.key.keysym.sym == SDLK_UNKNOWN)
                 break;
 
           case SDL_KEYDOWN:
-            utils::printInfo("SDL_KEYDOWN raw: sym=%d scancode=%d mod=0x%x\n",
-                             (int)event.key.keysym.sym,
-                             (int)event.key.keysym.scancode,
-                             (unsigned int)event.key.keysym.mod);
             event.key.keysym.sym = transKey(event.key.keysym.sym);
             ret = keyDownEvent( &event.key );
             if ( btndown_flag )
@@ -1576,16 +1556,10 @@ void ONScripter::runEventLoop()
             event.key.type = SDL_KEYUP;
             event.key.keysym.sym = transControllerButton(event.cbutton.button);
             event.key.keysym.mod = 0;
-            utils::printInfo("CONTROLLERBUTTONUP: which=%d button=%d mapped=%d\n",
-                             (int)event.cbutton.which, (int)event.cbutton.button, (int)event.key.keysym.sym);
             if(event.key.keysym.sym == SDLK_UNKNOWN)
                 break;
 
           case SDL_KEYUP:
-            utils::printInfo("SDL_KEYUP raw: sym=%d scancode=%d mod=0x%x\n",
-                             (int)event.key.keysym.sym,
-                             (int)event.key.keysym.scancode,
-                             (unsigned int)event.key.keysym.mod);
             event.key.keysym.sym = transKey(event.key.keysym.sym);
             keyUpEvent( &event.key );
             ret = keyPressEvent( &event.key );

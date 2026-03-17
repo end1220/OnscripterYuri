@@ -5,6 +5,27 @@
 #include <cstring>
 #include <cstdlib>
 
+// Launcher 主题颜色与布局/字号配置（仅在本实现文件内使用）
+const SDL_Color LAUNCHER_COLOR_BG            = {40, 100, 130, 255};    // 背景底色（纯色）
+const SDL_Color LAUNCHER_COLOR_GAME_NAME     = {225, 240, 245, 255}; // 未选中：更接近白
+const SDL_Color LAUNCHER_COLOR_GAME_NAME_SEL = {66, 225, 205, 255};   // 选中：更亮的青绿
+const SDL_Color LAUNCHER_COLOR_ITEM_BG       = {0, 235, 205, 0};    // 未选中底图：更亮一点
+const SDL_Color LAUNCHER_COLOR_ITEM_BG_SEL   = {235, 235, 235, 120};   // 选中底图：对比更明显
+const SDL_Color LAUNCHER_COLOR_TITLE         = {245, 235, 245, 255}; // 标题填充：几乎纯白
+const SDL_Color LAUNCHER_COLOR_TITLE_STROKE  = {0, 90, 120, 255};   // 标题描边：和高亮一致
+const SDL_Color LAUNCHER_COLOR_EMPTY_HINT    = {170, 190, 200, 255}; // 空目录提示：略亮灰蓝
+const SDL_Color LAUNCHER_COLOR_HINT_OPS      = {185, 205, 215, 255}; // 右下提示：再亮一点的灰蓝
+
+// 启动器纯色背景上叠加的半透明背景图（bg.jpg）的整体透明度
+const Uint8 LAUNCHER_BG_OVERLAY_ALPHA = 96; // 取值 0~255，值越小越透明
+
+// 字号
+const int LAUNCHER_TITLE_FONT_SIZE = 50;       // 顶部标题字号（稍大）
+const int LAUNCHER_GAME_NAME_FONT_SIZE = 36;   // 游戏名称字号
+
+// 布局
+const int LAUNCHER_LIST_TOP_MARGIN = 70;       // 游戏列表可视区域上边界（在标题下方）
+
 bool MenuUI::init(const std::string &fontPath) {
     fontPath_ = fontPath;
 
@@ -44,11 +65,14 @@ bool MenuUI::init(const std::string &fontPath) {
 
     if (TTF_Init() != 0) {
         std::fprintf(stderr, "TTF_Init failed: %s\n", TTF_GetError());
+        TTF_Quit();
         SDL_Quit();
         return false;
     }
-    if ((IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) != IMG_INIT_PNG) {
-        std::fprintf(stderr, "IMG_Init PNG failed: %s\n", IMG_GetError());
+    // 同时初始化 PNG 与 JPG，以便加载 bg.jpg 等背景图片
+    const int imgFlags = IMG_INIT_PNG | IMG_INIT_JPG;
+    if ((IMG_Init(imgFlags) & imgFlags) != imgFlags) {
+        std::fprintf(stderr, "IMG_Init PNG/JPG failed: %s\n", IMG_GetError());
         TTF_Quit();
         SDL_Quit();
         return false;
@@ -84,9 +108,28 @@ bool MenuUI::init(const std::string &fontPath) {
     if (SDL_NumJoysticks() > 0)
         openDevice(0);
 
-    font_ = TTF_OpenFont(path, 24);
+    // 启用 alpha 混合，以便条目底图的透明度生效
+    SDL_SetRenderDrawBlendMode(renderer_, SDL_BLENDMODE_BLEND);
+
+    // 顶部标题字体
+    titleFont_ = TTF_OpenFont(path, LAUNCHER_TITLE_FONT_SIZE);
+    if (!titleFont_) {
+        std::fprintf(stderr, "TTF_OpenFont (title) failed for %s: %s\n", path, TTF_GetError());
+        SDL_DestroyRenderer(renderer_);
+        renderer_ = nullptr;
+        SDL_DestroyWindow(window_);
+        window_ = nullptr;
+        TTF_Quit();
+        SDL_Quit();
+        return false;
+    }
+
+    // 游戏列表字体
+    font_ = TTF_OpenFont(path, LAUNCHER_GAME_NAME_FONT_SIZE);
     if (!font_) {
-        std::fprintf(stderr, "TTF_OpenFont failed for %s: %s\n", path, TTF_GetError());
+        std::fprintf(stderr, "TTF_OpenFont (game name) failed for %s: %s\n", path, TTF_GetError());
+        TTF_CloseFont(titleFont_);
+        titleFont_ = nullptr;
         SDL_DestroyRenderer(renderer_);
         renderer_ = nullptr;
         SDL_DestroyWindow(window_);
@@ -158,6 +201,10 @@ void MenuUI::shutdown() {
         TTF_CloseFont(font_);
         font_ = nullptr;
     }
+    if (titleFont_) {
+        TTF_CloseFont(titleFont_);
+        titleFont_ = nullptr;
+    }
     if (renderer_) {
         SDL_DestroyRenderer(renderer_);
         renderer_ = nullptr;
@@ -220,6 +267,8 @@ SDL_Texture *MenuUI::getIconTexture(const std::string &iconPath) {
     SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer_, surf);
     SDL_FreeSurface(surf);
     if (!tex) return nullptr;
+    // 确保纹理使用 alpha 混合，这样 SDL_SetTextureAlphaMod 才能生效
+    SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
     iconCache_[iconPath] = tex;
     return tex;
 }
@@ -314,62 +363,189 @@ void MenuUI::handleControllerAxis(Sint16 value, int &selected, int count) {
 }
 
 // 布局常量
-static const int ICON_SIZE = 150;
+static const int ICON_SIZE = 120;    // 图标尺寸
 static const int ICON_TEXT_GAP = 16;
-static const int ROW_HEIGHT = 170;   // 每行绘制高度
+static const int ROW_HEIGHT = 150;   // 每行绘制高度（稍微减小）
 static const int ROW_GAP = 5;        // 两个条目之间的间距
 static const int SLOT_HEIGHT = ROW_HEIGHT + ROW_GAP;
 
-// Galgame 粉红桃色配色（可在此修改，已提高明度亮度）
-static const SDL_Color COLOR_BG = {65, 45, 65, 255};           // 背景
-static const SDL_Color COLOR_TEXT = {255, 240, 248, 255};      // 未选中文字（淡粉）
-static const SDL_Color COLOR_TEXT_SEL = {255, 205, 225, 255};  // 选中文字（桃粉）
-static const SDL_Color COLOR_ROW_SEL = {130, 85, 115, 255};    // 选中行背景
-static const SDL_Color COLOR_ICON_PLACEHOLDER = {255, 255, 255, 255};  // 无图标占位（纯白）
+static const SDL_Color COLOR_ICON_PLACEHOLDER = {200, 230, 235, 255};  // 无图标占位（浅青灰）
 
 void MenuUI::render(const std::vector<GameEntry> &games, int selected) {
-    SDL_SetRenderDrawColor(renderer_, COLOR_BG.r, COLOR_BG.g, COLOR_BG.b, COLOR_BG.a);
+    SDL_SetRenderDrawColor(renderer_,
+                           LAUNCHER_COLOR_BG.r,
+                           LAUNCHER_COLOR_BG.g,
+                           LAUNCHER_COLOR_BG.b,
+                           LAUNCHER_COLOR_BG.a);
     SDL_RenderClear(renderer_);
 
     int windowW = 0, windowH = 0;
     SDL_GetRendererOutputSize(renderer_, &windowW, &windowH);
 
-    int totalHeight = 20 + static_cast<int>(games.size()) * SLOT_HEIGHT - ROW_GAP + 20;
-    int maxScroll = (totalHeight > windowH) ? (totalHeight - windowH) : 0;
-    int itemTop = 20 + selected * SLOT_HEIGHT;
-    int itemBottom = 20 + selected * SLOT_HEIGHT + ROW_HEIGHT;
-    if (itemTop - scrollOffset_ < 20)
-        scrollOffset_ = itemTop - 20;
+    // 在纯色背景上铺一张半透明的背景图（bg.jpg）
+    // 图片路径相对于启动目录（例如 run_launcher.sh 切换到的工作目录）
+    SDL_Texture *bgTex = getIconTexture("data/bg.jpg");
+    if (bgTex) {
+        SDL_SetTextureAlphaMod(bgTex, LAUNCHER_BG_OVERLAY_ALPHA);
+        SDL_Rect dst = {0, 0, windowW, windowH};
+        SDL_RenderCopy(renderer_, bgTex, nullptr, &dst);
+    }
+
+    // 顶部居中绘制标题 “ONS游戏”（使用描边 + 填充）
+    if (titleFont_) {
+        const char *titleText = "ONS游戏";
+
+        int titleW = 0;
+        int titleH = 0;
+
+        // 1. 先渲染描边
+        TTF_SetFontOutline(titleFont_, 2);  // 描边宽度
+        SDL_Surface *strokeSurf = TTF_RenderUTF8_Blended(titleFont_, titleText, LAUNCHER_COLOR_TITLE_STROKE);
+        if (strokeSurf) {
+            SDL_Texture *strokeTex = SDL_CreateTextureFromSurface(renderer_, strokeSurf);
+            if (strokeTex) {
+                titleW = strokeSurf->w;
+                titleH = strokeSurf->h;
+                int titleX = (windowW - titleW) / 2;
+                int titleY = (LAUNCHER_LIST_TOP_MARGIN - titleH) / 2;  // 在列表顶部区域内垂直居中
+                SDL_Rect dst = {titleX, titleY, titleW, titleH};
+                SDL_RenderCopy(renderer_, strokeTex, nullptr, &dst);
+                SDL_DestroyTexture(strokeTex);
+            }
+            SDL_FreeSurface(strokeSurf);
+        }
+
+        // 2. 再渲染填充文字（无描边）
+        TTF_SetFontOutline(titleFont_, 0);
+        SDL_Surface *fillSurf = TTF_RenderUTF8_Blended(titleFont_, titleText, LAUNCHER_COLOR_TITLE);
+        if (fillSurf) {
+            SDL_Texture *fillTex = SDL_CreateTextureFromSurface(renderer_, fillSurf);
+            if (fillTex) {
+                // 使用与描边相同的尺寸和位置（若上面没成功，重新计算一次）
+                if (titleW == 0 || titleH == 0) {
+                    titleW = fillSurf->w;
+                    titleH = fillSurf->h;
+                }
+                int titleX = (windowW - titleW) / 2;
+                int titleY = (LAUNCHER_LIST_TOP_MARGIN - titleH) / 2;
+                SDL_Rect dst = {titleX, titleY, titleW, titleH};
+                SDL_RenderCopy(renderer_, fillTex, nullptr, &dst);
+                SDL_DestroyTexture(fillTex);
+            }
+            SDL_FreeSurface(fillSurf);
+        }
+    }
+
+    // 列表绘制区域裁剪，避免与顶部标题重叠，并在底部预留高度显示操作提示
+    const int listTop = LAUNCHER_LIST_TOP_MARGIN;
+    const int listBottomMargin = 40;  // 底部保留 40 像素给提示文字
+    int listHeight = windowH - listTop - listBottomMargin;
+    if (listHeight < 0) listHeight = 0;
+    SDL_Rect listClip = {0, listTop, windowW, listHeight};
+    SDL_RenderSetClipRect(renderer_, &listClip);
+
+    // 若没有任何游戏条目，显示提示文字并退出本帧绘制
+    if (games.empty()) {
+        if (font_) {
+            const char *hintText = "Roms/ONS目录里没有ONS游戏哦~";
+            SDL_Surface *hintSurf = TTF_RenderUTF8_Blended(font_, hintText, LAUNCHER_COLOR_EMPTY_HINT);
+            if (hintSurf) {
+                SDL_Texture *hintTex = SDL_CreateTextureFromSurface(renderer_, hintSurf);
+                if (hintTex) {
+                    int textW = hintSurf->w;
+                    int textH = hintSurf->h;
+                    int textX = (windowW - textW) / 2;
+                    int textY = (windowH - textH) / 2;
+                    SDL_Rect dst = {textX, textY, textW, textH};
+                    SDL_RenderCopy(renderer_, hintTex, nullptr, &dst);
+                    SDL_DestroyTexture(hintTex);
+                }
+                SDL_FreeSurface(hintSurf);
+            }
+        }
+        SDL_RenderSetClipRect(renderer_, nullptr);
+        SDL_RenderPresent(renderer_);
+        return;
+    }
+
+    int totalHeight = LAUNCHER_LIST_TOP_MARGIN + static_cast<int>(games.size()) * SLOT_HEIGHT - ROW_GAP + 20;
+    int visibleBottom = windowH - listBottomMargin;
+    int visibleHeight = visibleBottom - listTop;
+    if (visibleHeight < 0) visibleHeight = 0;
+    int maxScroll = (totalHeight > visibleBottom) ? (totalHeight - visibleBottom) : 0;
+    int itemTop = LAUNCHER_LIST_TOP_MARGIN + selected * SLOT_HEIGHT;
+    int itemBottom = LAUNCHER_LIST_TOP_MARGIN + selected * SLOT_HEIGHT + ROW_HEIGHT;
+    if (itemTop - scrollOffset_ < LAUNCHER_LIST_TOP_MARGIN)
+        scrollOffset_ = itemTop - LAUNCHER_LIST_TOP_MARGIN;
     else if (itemBottom - scrollOffset_ > windowH - 20)
         scrollOffset_ = itemBottom - (windowH - 20);
     if (scrollOffset_ < 0) scrollOffset_ = 0;
     if (scrollOffset_ > maxScroll) scrollOffset_ = maxScroll;
 
-    const int baseY = 20;
+    const int baseY = LAUNCHER_LIST_TOP_MARGIN;
+    const int clipTop = listTop;
+    const int clipBottom = visibleBottom;
     // 只遍历可见行区间，长列表时减少循环与缓存查找次数
-    int startIndex = (scrollOffset_ - baseY - ROW_HEIGHT) / SLOT_HEIGHT + 1;
+    // 使用非负整除，避免第一条目在 scrollOffset_ 为 0 时被跳过
+    int startIndex = scrollOffset_ / SLOT_HEIGHT;
+    if (startIndex > 0) --startIndex;  // 多绘制一条在可见区域上方的行，避免滚动边缘闪烁
     if (startIndex < 0) startIndex = 0;
-    int endIndex = (windowH + scrollOffset_ - baseY) / SLOT_HEIGHT;
+
+    int endIndex = (scrollOffset_ + visibleHeight) / SLOT_HEIGHT + 1;
     const int count = static_cast<int>(games.size());
     if (endIndex >= count) endIndex = count - 1;
-    if (startIndex > endIndex) { SDL_RenderPresent(renderer_); return; }
+    if (startIndex > endIndex) {
+        SDL_RenderSetClipRect(renderer_, nullptr);
+
+        // 绘制底部操作提示
+        if (font_) {
+            const char *hintOps = "M-退出  A-启动游戏 ";
+            SDL_Surface *opsSurf = TTF_RenderUTF8_Blended(font_, hintOps, LAUNCHER_COLOR_HINT_OPS);
+            if (opsSurf) {
+                SDL_Texture *opsTex = SDL_CreateTextureFromSurface(renderer_, opsSurf);
+                if (opsTex) {
+                    int textW = opsSurf->w;
+                    int textH = opsSurf->h;
+                    // 将底部操作提示整体缩小
+                    const float scale = 1.0f;
+                    int dstW = static_cast<int>(textW * scale);
+                    int dstH = static_cast<int>(textH * scale);
+                    int padding = 20;
+                    int textX = windowW - dstW - padding;
+                    int textY = windowH - dstH;
+                    SDL_Rect dst = {textX, textY, dstW, dstH};
+                    SDL_RenderCopy(renderer_, opsTex, nullptr, &dst);
+                    SDL_DestroyTexture(opsTex);
+                }
+                SDL_FreeSurface(opsSurf);
+            }
+        }
+
+        SDL_RenderPresent(renderer_);
+        return;
+    }
 
     for (int i = startIndex; i <= endIndex; ++i) {
         int y = baseY + i * SLOT_HEIGHT - scrollOffset_;
         bool isSelected = (i == selected);
-        SDL_Color color = isSelected ? COLOR_TEXT_SEL : COLOR_TEXT;
+        SDL_Color color = isSelected ? LAUNCHER_COLOR_GAME_NAME_SEL
+                                     : LAUNCHER_COLOR_GAME_NAME;
 
         int rowH = ROW_HEIGHT;
 
-        if (i == selected) {
-            SDL_SetRenderDrawColor(renderer_, COLOR_ROW_SEL.r, COLOR_ROW_SEL.g, COLOR_ROW_SEL.b, COLOR_ROW_SEL.a);
-            SDL_Rect bg = {20, y, windowW - 40, rowH};
-            SDL_RenderFillRect(renderer_, &bg);
+        // 条目底图（未选中/选中）
+        {
+            const SDL_Color bgColor = isSelected ? LAUNCHER_COLOR_ITEM_BG_SEL : LAUNCHER_COLOR_ITEM_BG;
+            if (bgColor.a != 0) {
+                SDL_SetRenderDrawColor(renderer_, bgColor.r, bgColor.g, bgColor.b, bgColor.a);
+                SDL_Rect bg = {20, y, windowW - 40, rowH};
+                SDL_RenderFillRect(renderer_, &bg);
+            }
         }
 
         // 序号：距左边 20px，与图标间隔 20px
         static const int INDEX_LEFT = 50;
-        static const int INDEX_ICON_GAP = 50;
+        static const int INDEX_ICON_GAP = 20;
         char indexBuf[16];
         snprintf(indexBuf, sizeof(indexBuf), "%d", i + 1);
         int indexW = 0;
@@ -416,11 +592,37 @@ void MenuUI::render(const std::vector<GameEntry> &games, int selected) {
         }
     }
 
+    SDL_RenderSetClipRect(renderer_, nullptr);
+
+    // 绘制底部操作提示
+    if (font_) {
+        const char *hintOps = "M 退出  A 启动游戏";
+        SDL_Surface *opsSurf = TTF_RenderUTF8_Blended(font_, hintOps, LAUNCHER_COLOR_HINT_OPS);
+        if (opsSurf) {
+            SDL_Texture *opsTex = SDL_CreateTextureFromSurface(renderer_, opsSurf);
+            if (opsTex) {
+                int textW = opsSurf->w;
+                int textH = opsSurf->h;
+                // 将底部操作提示整体缩小到 70%
+                const float scale = 0.7f;
+                int dstW = static_cast<int>(textW * scale);
+                int dstH = static_cast<int>(textH * scale);
+                int padding = 20;
+                int textX = windowW - dstW - padding;
+                int textY = windowH - dstH - 10;  // 底部稍微往上 10 像素
+                SDL_Rect dst = {textX, textY, dstW, dstH};
+                SDL_RenderCopy(renderer_, opsTex, nullptr, &dst);
+                SDL_DestroyTexture(opsTex);
+            }
+            SDL_FreeSurface(opsSurf);
+        }
+    }
+
     SDL_RenderPresent(renderer_);
 }
 
 int MenuUI::run(const std::vector<GameEntry> &games) {
-    if (!window_ || !renderer_ || !font_ || games.empty())
+    if (!window_ || !renderer_ || !font_)
         return -1;
 
     int selected = 0;
