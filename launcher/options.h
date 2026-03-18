@@ -10,7 +10,7 @@ struct Options {
     std::string onsyuriPath;
     std::string gamesRoot;
     std::string fontPath;
-    std::string launchScriptPath;
+    std::string launcherDataDir;  // data.pak 所在目录，如 /path/to/ONScripter
     std::string enc = "utf8";
     std::vector<std::string> passArgs;
 };

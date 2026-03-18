@@ -7,5 +7,12 @@ BUILD_TYPE=Release OBTAIN_DEPENDS=yes ./local_linuxa64.sh
 # 或调试版
 BUILD_TYPE=Debug OBTAIN_DEPENDS=yes ./local_linuxa64.sh
 
-# 依赖已安装时
+# 依赖已安装时，一次构建所有
 BUILD_TYPE=Release ./local_linuxa64.sh
+
+
+# 打包launcher资源
+cd build_linuxa64/launcher
+./onsyuri_pak_builder    # 从 ./assets 打包到 ./data.pak
+
+路径以 "data/" 开头（例如 "data/bg.jpg"），则先尝试从data.pak加载。

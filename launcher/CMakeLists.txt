@@ -5,6 +5,8 @@ add_executable(onsyuri_launcher
     game_list.cpp
     options.cpp
     menu_ui.cpp
+    resource_pak.cpp
+    resource_loader.cpp
 )
 
 if(STATIC_PORT_ROOT)
@@ -39,4 +41,9 @@ else()
         ${SDL2_IMAGE_LINK_LIBRARIES}
     )
 endif()
+
+add_executable(onsyuri_pak_builder
+    pak_builder.cpp
+    resource_pak.cpp
+)
 
