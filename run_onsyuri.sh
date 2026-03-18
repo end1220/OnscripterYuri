@@ -3,7 +3,7 @@
 # 以本脚本所在目录为参照配置路径
 
 # 终止已运行的 onsyuri 进程
-# pkill -x onsyuri 2>/dev/null
+# pkill -x onscripter 2>/dev/null
 # sleep 0.5
 
 export HOME=/root
@@ -12,7 +12,7 @@ echo "=== Starting onsyuri ===" > /dev/tty0
 # ========== 路径配置（相对于本脚本所在目录）==========
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-ONSYURI="$SCRIPT_DIR/ONScripter/onsyuri"
+ONSYURI="$SCRIPT_DIR/ONScripter/ons"
 
 GAME_DIR="$SCRIPT_DIR/../ONS/yongzhe"
 

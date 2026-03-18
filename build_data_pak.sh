@@ -9,7 +9,7 @@ cd "$ROOT"
 
 ASSETS="${1:-launcher/assets}"
 PAK_PATH="${2:-build_linuxa64/launcher/data.pak}"
-BUILDER="build_linuxa64/launcher/onsyuri_pak_builder"
+BUILDER="build_linuxa64/launcher/ons_pak_builder"
 
 if [[ ! -d "$ASSETS" ]]; then
     echo "错误: assets 目录不存在: $ASSETS" >&2

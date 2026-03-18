@@ -15,7 +15,7 @@ static void ensureSaveDir(const std::string &path) {
 
 void stopOtherLauncherProcesses() {
     pid_t self = getpid();
-    FILE *fp = popen("pgrep -x onsyuri_launcher 2>/dev/null", "r");
+    FILE *fp = popen("pgrep -x ons_launcher 2>/dev/null", "r");
     if (!fp) return;
     char buf[64];
     while (fgets(buf, sizeof(buf), fp)) {
@@ -28,8 +28,8 @@ void stopOtherLauncherProcesses() {
 }
 
 static void stopExistingOnsyuriProcesses() {
-    // 先清理残留 onsyuri 进程，避免输入设备被旧进程占用
-    int rc = std::system("pkill -x onsyuri >/dev/null 2>&1");
+    // 先清理残留 onscripter 进程，避免输入设备被旧进程占用
+    int rc = std::system("pkill -x onscripter >/dev/null 2>&1");
     (void)rc;
     usleep(200 * 1000);  // 给系统一点时间回收资源
 }
@@ -42,7 +42,7 @@ static void clearLauncherSdlEnv() {
 bool parseArgs(int argc, char *argv[], Options &opt) {
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
-        if (arg == "--onsyuri" && i + 1 < argc) {
+        if (arg == "--onscripter" && i + 1 < argc) {
             opt.onsyuriPath = argv[++i];
         } else if (arg == "--games-root" && i + 1 < argc) {
             opt.gamesRoot = argv[++i];
@@ -59,7 +59,7 @@ bool parseArgs(int argc, char *argv[], Options &opt) {
 
     if (opt.onsyuriPath.empty() || opt.gamesRoot.empty()) {
         std::fprintf(stderr,
-                     "Usage: launcher --onsyuri /path/to/onsyuri --games-root /path/to/ONS "
+                     "Usage: launcher --onscripter /path/to/onscripter --games-root /path/to/ONS "
                      "[--launcher-data-dir /path/to/ONScripter] "
                      "[--font /path/to/font.ttf] "
                      "[--enc utf8] [--pass-arg ARG]...\n");
@@ -72,7 +72,7 @@ int launchGame(const Options &opt, const GameEntry &game) {
     std::fprintf(stderr, "[Launcher] launchGame: begin game=%s path=%s\n",
                  game.name.c_str(), game.path.c_str());
     stopExistingOnsyuriProcesses();
-    std::fprintf(stderr, "[Launcher] launchGame: existing onsyuri cleaned\n");
+    std::fprintf(stderr, "[Launcher] launchGame: existing onscripter cleaned\n");
     clearLauncherSdlEnv();
     std::fprintf(stderr, "[Launcher] launchGame: SDL_VIDEODRIVER=%s\n",
                  getenv("SDL_VIDEODRIVER") ? getenv("SDL_VIDEODRIVER") : "(null)");
@@ -84,7 +84,7 @@ int launchGame(const Options &opt, const GameEntry &game) {
     std::fprintf(stderr, "[Launcher] launchGame: saveDir=%s font=%s\n",
                  saveDir.c_str(), gameFont.c_str());
 
-    // 直接启动 onsyuri 的参数（不传 enc）
+    // 直接启动 onscripter 的参数（不传 enc）
     std::vector<std::string> argStorage;
     argStorage.push_back(opt.onsyuriPath);
     argStorage.push_back("--root");
@@ -106,7 +106,7 @@ int launchGame(const Options &opt, const GameEntry &game) {
     args.push_back(nullptr);
 
     execv(opt.onsyuriPath.c_str(), args.data());
-    std::perror("execv onsyuri");
-    std::fprintf(stderr, "[Launcher] launchGame: FAILED execv onsyuri\n");
+    std::perror("execv onscripter");
+    std::fprintf(stderr, "[Launcher] launchGame: FAILED execv onscripter\n");
     return 1;
 }

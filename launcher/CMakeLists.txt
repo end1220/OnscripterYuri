@@ -9,6 +9,8 @@ add_executable(onsyuri_launcher
     resource_loader.cpp
 )
 
+set_target_properties(onsyuri_launcher PROPERTIES OUTPUT_NAME "ons_launcher")
+
 if(STATIC_PORT_ROOT)
     target_include_directories(onsyuri_launcher PRIVATE
         ${STATIC_PORT_ROOT}/include
@@ -46,4 +48,6 @@ add_executable(onsyuri_pak_builder
     pak_builder.cpp
     resource_pak.cpp
 )
+
+set_target_properties(onsyuri_pak_builder PROPERTIES OUTPUT_NAME "ons_pak_builder")
 

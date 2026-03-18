@@ -399,6 +399,26 @@ void MenuUI::render(const std::vector<GameEntry> &games, int selected) {
     int windowW = 0, windowH = 0;
     SDL_GetRendererOutputSize(renderer_, &windowW, &windowH);
 
+    auto drawBottomOpsHint = [&](const char *hintOps, float scale = 1.0f) {
+        if (!font_ || !hintOps) return;
+        SDL_Surface *opsSurf = TTF_RenderUTF8_Blended(font_, hintOps, LAUNCHER_COLOR_HINT_OPS);
+        if (!opsSurf) return;
+        SDL_Texture *opsTex = SDL_CreateTextureFromSurface(renderer_, opsSurf);
+        if (opsTex) {
+            int textW = opsSurf->w;
+            int textH = opsSurf->h;
+            int dstW = static_cast<int>(textW * scale);
+            int dstH = static_cast<int>(textH * scale);
+            int padding = 20;
+            int textX = windowW - dstW - padding;
+            int textY = windowH - dstH;
+            SDL_Rect dst = {textX, textY, dstW, dstH};
+            SDL_RenderCopy(renderer_, opsTex, nullptr, &dst);
+            SDL_DestroyTexture(opsTex);
+        }
+        SDL_FreeSurface(opsSurf);
+    };
+
     // 在纯色背景上铺一张半透明的背景图（bg.jpg）
     SDL_Texture *bgTex = getIconTexture("data/bg.jpg");
     if (bgTex) {
@@ -410,16 +430,45 @@ void MenuUI::render(const std::vector<GameEntry> &games, int selected) {
     // 顶部居中绘制标题 “ONS游戏”（仅填充）
     if (titleFont_) {
         const char *titleText = "ONS游戏";
+        // 先描边再填充：描边用 LAUNCHER_COLOR_TITLE_STROKE，填充用 LAUNCHER_COLOR_TITLE
+        constexpr int kTitleOutlinePx = 2;
+
+        int titleX = 0;
+        int titleY = 0;
+        int titleW = 0;
+        int titleH = 0;
+
+        // 描边层
+        TTF_SetFontOutline(titleFont_, kTitleOutlinePx);
+        SDL_Surface *strokeSurf = TTF_RenderUTF8_Blended(titleFont_, titleText, LAUNCHER_COLOR_TITLE_STROKE);
+        if (strokeSurf) {
+            SDL_Texture *strokeTex = SDL_CreateTextureFromSurface(renderer_, strokeSurf);
+            if (strokeTex) {
+                titleW = strokeSurf->w;
+                titleH = strokeSurf->h;
+                titleX = (windowW - titleW) / 2;
+                titleY = (LAUNCHER_LIST_TOP_MARGIN - titleH) / 2;
+                SDL_Rect dst = {titleX, titleY, titleW, titleH};
+                SDL_RenderCopy(renderer_, strokeTex, nullptr, &dst);
+                SDL_DestroyTexture(strokeTex);
+            }
+            SDL_FreeSurface(strokeSurf);
+        }
+
+        // 填充层
         TTF_SetFontOutline(titleFont_, 0);
         SDL_Surface *fillSurf = TTF_RenderUTF8_Blended(titleFont_, titleText, LAUNCHER_COLOR_TITLE);
         if (fillSurf) {
             SDL_Texture *fillTex = SDL_CreateTextureFromSurface(renderer_, fillSurf);
             if (fillTex) {
-                int titleW = fillSurf->w;
-                int titleH = fillSurf->h;
-                int titleX = (windowW - titleW) / 2;
-                int titleY = (LAUNCHER_LIST_TOP_MARGIN - titleH) / 2;
-                SDL_Rect dst = {titleX, titleY, titleW, titleH};
+                // 以描边层的尺寸为准居中；若描边层没生成，则用填充层计算
+                if (titleW == 0 || titleH == 0) {
+                    titleW = fillSurf->w;
+                    titleH = fillSurf->h;
+                    titleX = (windowW - titleW) / 2;
+                    titleY = (LAUNCHER_LIST_TOP_MARGIN - titleH) / 2;
+                }
+                SDL_Rect dst = {titleX, titleY, fillSurf->w, fillSurf->h};
                 SDL_RenderCopy(renderer_, fillTex, nullptr, &dst);
                 SDL_DestroyTexture(fillTex);
             }
@@ -438,7 +487,7 @@ void MenuUI::render(const std::vector<GameEntry> &games, int selected) {
     // 若没有任何游戏条目，显示提示文字并退出本帧绘制
     if (games.empty()) {
         if (font_) {
-            const char *hintText = "Roms/ONS目录里没有ONS游戏哦~";
+            const char *hintText = "Roms/ONS目录里未包含ONS游戏哦~";
             SDL_Surface *hintSurf = TTF_RenderUTF8_Blended(font_, hintText, LAUNCHER_COLOR_EMPTY_HINT);
             if (hintSurf) {
                 SDL_Texture *hintTex = SDL_CreateTextureFromSurface(renderer_, hintSurf);
@@ -455,6 +504,10 @@ void MenuUI::render(const std::vector<GameEntry> &games, int selected) {
             }
         }
         SDL_RenderSetClipRect(renderer_, nullptr);
+
+        // 空列表时也绘制底部操作提示
+        drawBottomOpsHint("Ⓜ退出  Ⓐ启动 ");
+
         SDL_RenderPresent(renderer_);
         return;
     }
@@ -489,28 +542,7 @@ void MenuUI::render(const std::vector<GameEntry> &games, int selected) {
         SDL_RenderSetClipRect(renderer_, nullptr);
 
         // 绘制底部操作提示
-        if (font_) {
-            const char *hintOps = "M-退出  A-启动游戏 ";
-            SDL_Surface *opsSurf = TTF_RenderUTF8_Blended(font_, hintOps, LAUNCHER_COLOR_HINT_OPS);
-            if (opsSurf) {
-                SDL_Texture *opsTex = SDL_CreateTextureFromSurface(renderer_, opsSurf);
-                if (opsTex) {
-                    int textW = opsSurf->w;
-                    int textH = opsSurf->h;
-                    // 将底部操作提示整体缩小
-                    const float scale = 1.0f;
-                    int dstW = static_cast<int>(textW * scale);
-                    int dstH = static_cast<int>(textH * scale);
-                    int padding = 20;
-                    int textX = windowW - dstW - padding;
-                    int textY = windowH - dstH;
-                    SDL_Rect dst = {textX, textY, dstW, dstH};
-                    SDL_RenderCopy(renderer_, opsTex, nullptr, &dst);
-                    SDL_DestroyTexture(opsTex);
-                }
-                SDL_FreeSurface(opsSurf);
-            }
-        }
+        drawBottomOpsHint("M-退出  A-启动游戏 ");
 
         SDL_RenderPresent(renderer_);
         return;
@@ -586,26 +618,7 @@ void MenuUI::render(const std::vector<GameEntry> &games, int selected) {
     SDL_RenderSetClipRect(renderer_, nullptr);
 
     // 绘制底部操作提示
-    if (font_) {
-        const char *hintOps = "Ⓜ退出  Ⓐ启动 ";
-        SDL_Surface *opsSurf = TTF_RenderUTF8_Blended(font_, hintOps, LAUNCHER_COLOR_HINT_OPS);
-        if (opsSurf) {
-            SDL_Texture *opsTex = SDL_CreateTextureFromSurface(renderer_, opsSurf);
-            if (opsTex) {
-                int textW = opsSurf->w;
-                int textH = opsSurf->h;
-                int dstW = static_cast<int>(textW);
-                int dstH = static_cast<int>(textH);
-                int padding = 20;
-                int textX = windowW - dstW - padding;
-                int textY = windowH - dstH;
-                SDL_Rect dst = {textX, textY, dstW, dstH};
-                SDL_RenderCopy(renderer_, opsTex, nullptr, &dst);
-                SDL_DestroyTexture(opsTex);
-            }
-            SDL_FreeSurface(opsSurf);
-        }
-    }
+    drawBottomOpsHint("Ⓜ退出  Ⓐ启动 ");
 
     SDL_RenderPresent(renderer_);
     if (!firstPresentDone) {

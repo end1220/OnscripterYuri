@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.16.3)
 project(onsyuri)
 
+set(ONS_EXECUTABLE_NAME "onscripter")
+
 function(config_linux TARGET_NAME)
     add_executable(${TARGET_NAME} ${ONSYURI_CODE})
     install(TARGETS ${TARGET_NAME} RUNTIME)
@@ -539,5 +541,8 @@ set(ONSYURI_DEFINES
     ENABLE_1BYTE_CHAR
 )
 config_platform(${PROJECT_NAME})
+
+# keep CMake target name `onsyuri`, but produce a binary without "yuri"
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${ONS_EXECUTABLE_NAME})
 
 add_subdirectory(launcher)

@@ -13,6 +13,6 @@ BUILD_TYPE=Release ./local_linuxa64.sh
 
 # 打包launcher资源
 cd build_linuxa64/launcher
-./onsyuri_pak_builder    # 从 ./assets 打包到 ./data.pak
+./ons_pak_builder    # 从 ./assets 打包到 ./data.pak
 
 路径以 "data/" 开头（例如 "data/bg.jpg"），则先尝试从data.pak加载。

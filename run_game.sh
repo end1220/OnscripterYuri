@@ -12,7 +12,7 @@ PASS_ARGS=()
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --onsyuri)
+        --onscripter)
             ONSYURI="${2:-}"
             shift 2
             ;;
@@ -44,7 +44,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$ONSYURI" || -z "$GAME_DIR" ]]; then
-    echo "Usage: $0 --onsyuri /path/to/onsyuri --game-dir /path/to/game [--save-dir DIR] [--font FILE] [--enc utf8] [--pass-arg ARG]..." >&2
+    echo "Usage: $0 --onscripter /path/to/onscripter --game-dir /path/to/game [--save-dir DIR] [--font FILE] [--enc utf8] [--pass-arg ARG]..." >&2
     exit 1
 fi
 

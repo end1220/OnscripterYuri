@@ -8,8 +8,8 @@ GAME_ROOT="${GAME_ROOT:-$SCRIPT_DIR/../ONS}"
 cd "$ONS_DIR" || exit 1
 export LD_LIBRARY_PATH="$SCRIPT_DIR/ONScripter/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
-"$ONS_DIR/onsyuri_launcher" \
-    --onsyuri "$ONS_DIR/onsyuri" \
+"$ONS_DIR/ons_launcher" \
+    --onscripter "$ONS_DIR/onscripter" \
     --games-root "$GAME_ROOT" \
     --font "$ONS_DIR/font.ttf" \
     --launcher-data-dir "$ONS_DIR" \
