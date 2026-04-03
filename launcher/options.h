@@ -13,6 +13,9 @@ struct Options {
     std::string launcherDataDir;  // data.pak 所在目录，如 /path/to/ONScripter
     std::string enc = "utf8";
     std::vector<std::string> passArgs;
+    bool windowed = false;  // 窗口模式（用于开发调试）
+    int windowWidth = 960;   // 窗口模式下的宽度
+    int windowHeight = 720;  // 窗口模式下的高度
 };
 
 bool parseArgs(int argc, char *argv[], Options &opt);

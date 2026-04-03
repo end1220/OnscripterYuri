@@ -12,7 +12,7 @@ int main(int argc, char *argv[]) {
     auto games = scanGames(opt.gamesRoot);
 
     MenuUI ui;
-    if (!ui.init(opt.fontPath, opt.launcherDataDir)) return 1;
+    if (!ui.init(opt.fontPath, opt.launcherDataDir, opt.windowed, opt.windowWidth, opt.windowHeight)) return 1;
 
     int selected = ui.run(games);
     ui.shutdown();

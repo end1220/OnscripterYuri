@@ -27,7 +27,8 @@ const int LAUNCHER_GAME_NAME_FONT_SIZE = 36;   // 游戏名称字号
 // 布局
 const int LAUNCHER_LIST_TOP_MARGIN = 70;       // 游戏列表可视区域上边界（在标题下方）
 
-bool MenuUI::init(const std::string &fontPath, const std::string &launcherDataDir) {
+bool MenuUI::init(const std::string &fontPath, const std::string &launcherDataDir, 
+                  bool windowed, int windowWidth, int windowHeight) {
     fontPath_ = fontPath;
 
     Uint32 sdlFlags = SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER;
@@ -79,12 +80,21 @@ bool MenuUI::init(const std::string &fontPath, const std::string &launcherDataDi
         return false;
     }
 
-    // 全屏窗口，适配掌机
-    window_ = SDL_CreateWindow(
-        "ONS Launcher",
-        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        0, 0,
-        SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP);
+    // 窗口模式：开发调试用窗口，真机默认全屏
+    if (windowed) {
+        std::fprintf(stderr, "[Launcher] Windowed mode: %dx%d\n", windowWidth, windowHeight);
+        window_ = SDL_CreateWindow(
+            "ONS Launcher",
+            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+            windowWidth, windowHeight,
+            SDL_WINDOW_SHOWN);
+    } else {
+        window_ = SDL_CreateWindow(
+            "ONS Launcher",
+            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+            0, 0,
+            SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP);
+    }
     if (!window_) {
         std::fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
         TTF_Quit();

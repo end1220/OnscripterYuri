@@ -17,7 +17,8 @@ public:
     MenuUI(const MenuUI &) = delete;
     MenuUI &operator=(const MenuUI &) = delete;
 
-    bool init(const std::string &fontPath = "", const std::string &launcherDataDir = "");
+    bool init(const std::string &fontPath = "", const std::string &launcherDataDir = "", 
+              bool windowed = false, int windowWidth = 960, int windowHeight = 720);
     void shutdown();
 
     int run(const std::vector<GameEntry> &games);

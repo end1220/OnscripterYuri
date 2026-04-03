@@ -54,6 +54,21 @@ bool parseArgs(int argc, char *argv[], Options &opt) {
             opt.enc = argv[++i];
         } else if (arg == "--pass-arg" && i + 1 < argc) {
             opt.passArgs.emplace_back(argv[++i]);
+        } else if (arg == "--windowed") {
+            opt.windowed = true;
+            // 可选：--windowed WIDTH HEIGHT
+            if (i + 2 < argc) {
+                char *end1 = nullptr, *end2 = nullptr;
+                int w = std::strtol(argv[i + 1], &end1, 10);
+                int h = std::strtol(argv[i + 2], &end2, 10);
+                if (end1 > argv[i + 1] && end1[0] == '\0' &&
+                    end2 > argv[i + 2] && end2[0] == '\0' &&
+                    w > 0 && h > 0) {
+                    opt.windowWidth = w;
+                    opt.windowHeight = h;
+                    i += 2;
+                }
+            }
         }
     }
 
