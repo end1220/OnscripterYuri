@@ -1195,6 +1195,75 @@ void ONScripter::runEventLoop()
     static int polled_button_count = -1;
     bool use_polled_joystick_buttons = true;
     bool logged_axis_ignored_by_hat = false;
+    static Sint16 controller_left_x = 0;
+    static Sint16 controller_left_y = 0;
+    static Sint16 joystick_left_x = 0;
+    static Sint16 joystick_left_y = 0;
+    auto clampScriptPointer = [&](int &x, int &y) {
+        if (x < 0) x = 0;
+        else if (x >= screen_width) x = screen_width - 1;
+        if (y < 0) y = 0;
+        else if (y >= screen_height) y = screen_height - 1;
+    };
+    auto syncPointerFromCurrentState = [&]() {
+        pointer_cursor_x = current_button_state.x;
+        pointer_cursor_y = current_button_state.y;
+        clampScriptPointer(pointer_cursor_x, pointer_cursor_y);
+    };
+    auto axisToStep = [&](Sint16 value) -> int {
+        int deadzone = pointer_axis_deadzone;
+        int abs_v = value >= 0 ? value : -value;
+        if (abs_v <= deadzone) return 0;
+        int range = 32767 - deadzone;
+        int mag = abs_v - deadzone;
+        int step = mag * pointer_axis_max_step / (range > 0 ? range : 1);
+        if (step < 1) step = 1;
+        return value >= 0 ? step : -step;
+    };
+    auto updatePointerByStick = [&](Sint16 axis_x, Sint16 axis_y) -> bool {
+        bool active = ((axis_x >= 0 ? axis_x : -axis_x) > pointer_axis_deadzone) ||
+                      ((axis_y >= 0 ? axis_y : -axis_y) > pointer_axis_deadzone);
+        if (active) {
+            if (input_mode != INPUT_MODE_POINTER) syncPointerFromCurrentState();
+            input_mode = INPUT_MODE_POINTER;
+            last_left_stick_active_ms = SDL_GetTicks();
+        } else if (input_mode != INPUT_MODE_POINTER) {
+            return false;
+        }
+
+        int dx = axisToStep(axis_x);
+        int dy = axisToStep(axis_y);
+        if (dx == 0 && dy == 0) return false;
+
+        pointer_cursor_x += dx;
+        pointer_cursor_y += dy;
+        clampScriptPointer(pointer_cursor_x, pointer_cursor_y);
+
+        SDL_MouseMotionEvent mevent;
+        SDL_memset(&mevent, 0, sizeof(mevent));
+        mevent.x = pointer_cursor_x;
+        mevent.y = pointer_cursor_y;
+        return mouseMoveEvent(&mevent);
+    };
+    auto updatePointerIdleMode = [&]() {
+        if (input_mode == INPUT_MODE_POINTER &&
+            SDL_GetTicks() - last_left_stick_active_ms >= pointer_idle_timeout_ms) {
+            input_mode = INPUT_MODE_TRADITIONAL;
+        }
+    };
+    auto pointerLeftClick = [&](bool down, Uint32 timestamp) -> bool {
+        SDL_MouseButtonEvent bev;
+        SDL_memset(&bev, 0, sizeof(bev));
+        bev.type = down ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP;
+        bev.button = SDL_BUTTON_LEFT;
+        bev.x = pointer_cursor_x;
+        bev.y = pointer_cursor_y;
+        bev.timestamp = timestamp;
+        current_button_state.event_type = bev.type;
+        current_button_state.event_button = bev.button;
+        if (down) g_lastpress_time = timestamp;
+        return mousePressEvent(&bev);
+    };
     auto pollJoystickButtons = [&]() -> bool {
         if (joystick == NULL || !use_polled_joystick_buttons) {
             polled_button_count = -1;
@@ -1237,6 +1306,7 @@ void ONScripter::runEventLoop()
 
     while ( true ) {
         if (!SDL_WaitEventTimeout(&event, 16)) {
+            updatePointerIdleMode();
             if (pollJoystickButtons()) return;
             continue;
         }
@@ -1372,6 +1442,12 @@ void ONScripter::runEventLoop()
           case SDL_JOYBUTTONDOWN:
             use_polled_joystick_buttons = false;
             if (joystick != NULL && event.jbutton.which == SDL_JoystickInstanceID(joystick)) {
+                if (input_mode == INPUT_MODE_POINTER &&
+                    transJoystickButton(event.jbutton.button) == SDLK_ESCAPE) {
+                    ret = pointerLeftClick(true, event.jbutton.timestamp);
+                    if (ret) return;
+                    break;
+                }
                 event.key.type = SDL_KEYDOWN;
                 event.key.keysym.sym = transJoystickButton(event.jbutton.button);
                 event.key.keysym.mod = 0;
@@ -1392,6 +1468,12 @@ void ONScripter::runEventLoop()
           case SDL_JOYBUTTONUP:
             use_polled_joystick_buttons = false;
             if (joystick != NULL && event.jbutton.which == SDL_JoystickInstanceID(joystick)) {
+                if (input_mode == INPUT_MODE_POINTER &&
+                    transJoystickButton(event.jbutton.button) == SDLK_ESCAPE) {
+                    ret = pointerLeftClick(false, event.jbutton.timestamp);
+                    if (ret) return;
+                    break;
+                }
                 event.key.type = SDL_KEYUP;
                 event.key.keysym.sym = transJoystickButton(event.jbutton.button);
                 event.key.keysym.mod = 0;
@@ -1437,9 +1519,16 @@ void ONScripter::runEventLoop()
             break;
           }
           case SDL_JOYAXISMOTION: {
-            /* 左摇杆轴 -> 方向键（掌机常用轴 0=水平 1=垂直） */
+            /* 左摇杆轴：传统模式保持原行为，指针模式走逻辑鼠标 */
             if (joystick == NULL || event.jaxis.which != SDL_JoystickInstanceID(joystick))
                 break;
+            if (event.jaxis.axis == 0) joystick_left_x = event.jaxis.value;
+            else if (event.jaxis.axis == 1) joystick_left_y = event.jaxis.value;
+            else break;
+
+            if (updatePointerByStick(joystick_left_x, joystick_left_y)) return;
+            if (input_mode == INPUT_MODE_POINTER) break;
+
             if (SDL_JoystickNumHats(joystick) > 0) {
                 if (!logged_axis_ignored_by_hat) {
                     utils::printInfo("JOYAXISMOTION ignored: device has HAT, use HAT for dpad\n");
@@ -1452,12 +1541,8 @@ void ONScripter::runEventLoop()
             static bool axis_left = false, axis_right = false, axis_up = false, axis_down = false;
             utils::printInfo("JOYAXISMOTION: which=%d axis=%d value=%d\n",
                              (int)event.jaxis.which, (int)event.jaxis.axis, (int)event.jaxis.value);
-            if (event.jaxis.axis == 0)
-                joy_axis0 = event.jaxis.value;
-            else if (event.jaxis.axis == 1)
-                joy_axis1 = event.jaxis.value;
-            else
-                break;
+            if (event.jaxis.axis == 0) joy_axis0 = event.jaxis.value;
+            else if (event.jaxis.axis == 1) joy_axis1 = event.jaxis.value;
             bool new_left = (joy_axis0 < -ONS_JOY_AXIS_DEADZONE);
             bool new_right = (joy_axis0 > ONS_JOY_AXIS_DEADZONE);
             bool new_down = (joy_axis1 > ONS_JOY_AXIS_DEADZONE);   /* SDL Y 轴正多为下 */
@@ -1538,6 +1623,12 @@ void ONScripter::runEventLoop()
             break;
 
           case SDL_CONTROLLERBUTTONDOWN:
+            if (input_mode == INPUT_MODE_POINTER &&
+                event.cbutton.button == SDL_CONTROLLER_BUTTON_A) {
+                ret = pointerLeftClick(true, event.cbutton.timestamp);
+                if (ret) return;
+                break;
+            }
             event.key.type = SDL_KEYDOWN;
             event.key.keysym.sym = transControllerButton(event.cbutton.button);
             event.key.keysym.mod = 0;
@@ -1553,11 +1644,33 @@ void ONScripter::runEventLoop()
             break;
 
           case SDL_CONTROLLERBUTTONUP:
+            if (input_mode == INPUT_MODE_POINTER &&
+                event.cbutton.button == SDL_CONTROLLER_BUTTON_A) {
+                ret = pointerLeftClick(false, event.cbutton.timestamp);
+                if (ret) return;
+                break;
+            }
             event.key.type = SDL_KEYUP;
             event.key.keysym.sym = transControllerButton(event.cbutton.button);
             event.key.keysym.mod = 0;
             if(event.key.keysym.sym == SDLK_UNKNOWN)
                 break;
+            event.key.keysym.sym = transKey(event.key.keysym.sym);
+            keyUpEvent( &event.key );
+            ret = keyPressEvent( &event.key );
+            if (ret) return;
+            break;
+
+          case SDL_CONTROLLERAXISMOTION:
+            if (controller != NULL &&
+                event.caxis.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))) {
+                if (event.caxis.axis == SDL_CONTROLLER_AXIS_LEFTX) controller_left_x = event.caxis.value;
+                else if (event.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY) controller_left_y = event.caxis.value;
+                else break;
+                ret = updatePointerByStick(controller_left_x, controller_left_y);
+                if (ret) return;
+            }
+            break;
 
           case SDL_KEYUP:
             event.key.keysym.sym = transKey(event.key.keysym.sym);
@@ -1671,6 +1784,7 @@ void ONScripter::runEventLoop()
           default:
             break;
         }
+        updatePointerIdleMode();
         if (pollJoystickButtons()) return;
     }
 }

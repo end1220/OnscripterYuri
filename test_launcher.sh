@@ -4,7 +4,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ONS_DIR="$SCRIPT_DIR/build_linuxa64"
 LAUNCHER_DIR="$ONS_DIR/launcher"
-GAME_ROOT="${GAME_ROOT:-$SCRIPT_DIR/../ONS}"
+GAME_ROOT="${GAME_ROOT:-$SCRIPT_DIR/build_linuxa64/ONS}"
 
 cd "$ONS_DIR" || exit 1
 export LD_LIBRARY_PATH="$ONS_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"

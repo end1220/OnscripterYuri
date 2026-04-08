@@ -1,5 +1,28 @@
 # Linux ARM64 掌机：摇杆模拟鼠标指针与模式切换 — 需求评估与实施方案
 
+## 实施现状（已落地）
+
+以下内容已按当前代码实现（以 `master` 工作树为准）：
+
+- 已新增 `INPUT_MODE_TRADITIONAL` / `INPUT_MODE_POINTER` 两种输入模式，并在引擎内维护逻辑指针坐标与指针参数。
+- 模式切换采用**自动策略**：左摇杆超死区自动进入 `INPUT_MODE_POINTER`；连续约 5 秒无左摇杆活动自动回到 `INPUT_MODE_TRADITIONAL`。
+- 已实现 `SDL_CONTROLLERAXISMOTION`：GameController 左摇杆可直接驱动逻辑指针，并复用 `mouseMoveEvent` / `mouseOverCheck` 按钮悬停链路。
+- 指针模式下 **A 键**（以及 Joystick 路径下映射到 `SDLK_ESCAPE` 的确认键）已改为合成鼠标左键，走 `mousePressEvent`。
+- 指针模式下 `SDL_JOYAXISMOTION` 已绕过“有 HAT 就忽略轴”的限制；传统模式保持原有 D-pad/HAT 行为。
+- **未实现** Back/L3 手动切换键（与后续用户决策一致）。
+
+### 本次实际代码修改位置（简要）
+
+- `src/onsyuri/ONScripter.h`
+  - 增加输入模式与指针相关状态：`input_mode`、`pointer_cursor_x/y`、`pointer_axis_deadzone`、`pointer_axis_max_step`、`last_left_stick_active_ms`、`pointer_idle_timeout_ms`。
+- `src/onsyuri/ONScripter.cpp`
+  - 在构造函数与 `resetSub()` 初始化上述状态，默认传统模式与 5 秒超时参数。
+- `src/onsyuri/ONScripter_event.cpp`
+  - 在 `runEventLoop()` 增加左摇杆轴到逻辑指针的更新逻辑。
+  - 新增 `SDL_CONTROLLERAXISMOTION` 分支。
+  - 在 `SDL_CONTROLLERBUTTONDOWN/UP`、`SDL_JOYBUTTONDOWN/UP` 中加入指针模式点击分支（A/确认键 -> 左键）。
+  - 在事件空闲与循环尾部加入“指针模式 5 秒无活动回传统模式”检查。
+
 ## 1. 需求摘要
 
 在 **Linux ARM64 掌机**（自带游戏手柄）上运行 OnscripterYuri 引擎时：
@@ -8,7 +31,7 @@
 |------|------|
 | 指针移动 | 用 **左摇杆** 控制游戏画面内与 **ONS 逻辑一致** 的「鼠标」位置（用于 `mouseMoveEvent` / `mouseOverCheck` / 点击判定）。 |
 | 点击 | **A 键** 触发 **鼠标左键点击**（等价于在指针位置产生左键按下/抬起）。 |
-| 模式切换 | 增加 **一种切换键**，在两种模式间切换：① **指针模式**（摇杆=移动指针、A=左键）；② **传统模式**（与当前一致：方向键/手柄映射到键盘与既有逻辑）。 |
+| 模式切换 | 采用 **自动切换**：左摇杆有活动进入指针模式；连续约 5 秒无左摇杆活动回传统模式。 |
 
 下文先评估合理性，再对照 **仓库现有逻辑**，最后给出可落地的实施步骤。
 
@@ -80,7 +103,7 @@
 - **不要** 依赖 `SDL_WarpMouseInWindow` 作为唯一更新手段（部分环境下会额外产生事件或节流）；**推荐** 直接维护「逻辑鼠标坐标」并调用 `mouseOverCheck` + 更新 `current_button_state`，与 `shiftCursorOnButton` 的设计思想一致。
 - 若游戏内仍有 **绘制层光标**（`cursor_info`），指针移动时是否同步 **warp 系统光标** 可选（掌机常无可见系统光标，可省略）。
 
-### 4.3 模式切换键（规划）
+### 4.3 模式切换键（规划，当前版本未采用）
 
 需在 **GameController** 与 **仅 Joystick** 两条路径上都能识别（或统一用键盘键，若掌机映射出键盘事件）。
 
@@ -91,7 +114,7 @@
 | **L3 / R3** | 摇杆按下，误触风险；适合「组合键」而非单键。 |
 | **L1+R1 组合** | 降低误触，实现略复杂。 |
 
-**建议**：默认使用 **Back 或 L3** 其一作为 **切换**，并在 **配置文件或环境变量** 中可改；实现时在 **模式切换分支** 里 `return`，避免进入 `transControllerButton`。
+当前实现未采用手动切换键；保留本节仅作备选设计记录。现版本以“左摇杆活动进入，5 秒无活动退出”的自动策略为准。
 
 ### 4.4 A 键 → 左键点击
 
@@ -111,7 +134,7 @@
 
 - 仅插入掌机手柄：验证 **传统模式** 下方向键/映射键仍可用。
 - **指针模式**：摇杆移动时 `WAIT_BUTTON_MODE` 下按钮高亮随动；A 键触发与鼠标左键一致。
-- 切换键：连续切换 20 次无卡死、无双重模式。
+- 自动切换：左摇杆活动可稳定进入指针模式；回中后约 5 秒可稳定回传统模式。
 - 带 **HAT** 与 **不带 HAT** 的设备各测一台。
 
 ### 4.7 不在本次范围（可后续）
@@ -127,6 +150,6 @@
 |----|------|
 | 需求是否合理 | **合理**，与 ONS 以鼠标为核心的交互一致；**必须**做模式切换与键位语义隔离。 |
 | 现有代码基础 | **鼠标与按钮判定链完整**；**缺口** 主要是 **GameController 左摇杆未进引擎** 以及 **A 键当前映射为 Escape**。 |
-| 实施要点 | 增加 **双模式**；指针模式下 **轴→逻辑坐标 + mouseOverCheck**；**A→左键**；切换键 **可配置**；注意 **HAT 与仅 Controller** 两种硬件差异。 |
+| 实施要点 | 增加 **双模式**；指针模式下 **轴→逻辑坐标 + mouseOverCheck**；**A→左键**；采用 **自动切换**（左摇杆活动进入/5 秒无活动退出）；注意 **HAT 与仅 Controller** 两种硬件差异。 |
 
 本文档为实施计划与架构说明；具体 API 命名与参数以编码时与 `ONScripter.h` 现有风格为准。

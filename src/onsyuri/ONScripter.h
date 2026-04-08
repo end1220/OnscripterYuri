@@ -547,6 +547,17 @@ private:
     };
     
     int  next_time;
+    enum InputMode {
+        INPUT_MODE_TRADITIONAL = 0,
+        INPUT_MODE_POINTER = 1
+    };
+    int input_mode;
+    int pointer_cursor_x;
+    int pointer_cursor_y;
+    int pointer_axis_deadzone;
+    int pointer_axis_max_step;
+    Uint32 last_left_stick_active_ms;
+    Uint32 pointer_idle_timeout_ms;
     int  variable_edit_mode;
     int  variable_edit_index;
     int  variable_edit_num;
