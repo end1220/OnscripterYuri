@@ -1,0 +1,106 @@
+---
+description: "OnscripterYuri 项目架构介绍 | 适用：ONScripter 引擎、C++、SDL2、多平台构建 | 关键词：ONScripter、SDL2、CMake、script parsing"
+alwaysApply: true
+---
+
+# OnscripterYuri 项目架构
+
+## 项目概览
+
+| 项 | 说明 |
+|----|------|
+| 名称 | OnscripterYuri |
+| 类型 | 跨平台视觉小说引擎（ONScripter 增强版） |
+| 语言 | C++ |
+| 构建系统 | CMake |
+| 目标平台 | Windows、Linux、Mac、Android、Web（Emscripten）、Libretro |
+
+## 核心目录结构
+
+```
+OnscripterYuri/
+├── src/
+│   ├── onsyuri/              # 核心引擎代码
+│   ├── onsyuri_android/      # Android 平台代码
+│   ├── onsyuri_libretro/     # Libretro 核心
+│   └── onsyuri_web/          # Web 平台代码
+├── launcher/                 # 游戏启动器/菜单 UI（详见 `.cursor/rules/launcher/overview.mdc`）
+├── script/                   # 各平台构建脚本
+├── docker/                   # Docker 多平台构建
+└── asset/                    # 资源文件
+```
+
+## 核心模块（src/onsyuri/）
+
+### 脚本解析
+| 文件 | 职责 |
+|------|------|
+| `ScriptHandler.h/cpp` | 脚本解析器基类 |
+| `ScriptParser.h/cpp` | 脚本解析实现 |
+| `ScriptParser_command.cpp` | 命令解析 |
+
+### 渲染与图像
+| 文件 | 职责 |
+|------|------|
+| `ONScripter_image.cpp` | 图像渲染 |
+| `ONScripter_animation.cpp` | 动画系统 |
+| `resize_image.cpp/h` | 图像缩放（SIMD 优化） |
+
+### 音频与视频
+| 文件 | 职责 |
+|------|------|
+| `ONScripter_sound.cpp` | 音频播放（SDL2_mixer） |
+| `AVIWrapper.cpp/h` | 视频播放封装 |
+| `simple_aviplay.cpp` | AVI 播放实现 |
+
+### 事件与交互
+| 文件 | 职责 |
+|------|------|
+| `ONScripter_event.cpp` | 事件处理（键盘/鼠标/手柄/触摸等，详见 `.cursor/rules/input/player-input.mdc`） |
+| `ONScripter_rmenu.cpp` | 右键菜单 |
+| `ONScripter_command.cpp` | 命令执行 |
+
+### 核心类
+| 类 | 职责 |
+|------|------|
+| `ONScripter` | 主引擎类，继承 `ScriptParser` |
+| `AnimationInfo` | 动画信息管理 |
+| `DirtyRect` | 脏矩形渲染优化 |
+| `FontInfo` | 字体信息 |
+
+## 构建系统
+
+### 构建脚本（script/）
+
+| 脚本 | 平台 |
+|------|------|
+| `local_msys2mingw64.sh` | Windows MSYS2 |
+| `local_linux64.sh` | Linux x64 |
+| `local_darwin.sh` | macOS |
+| `cross_web.sh` | Web (Emscripten) |
+| `cross_android.sh` | Android |
+| `cross_llvmmingw*.sh` | Windows (LLVM MinGW) |
+| `cross_linux*.sh` | Linux 交叉编译 |
+
+### 依赖库
+- **SDL2** - 窗口、渲染、输入
+- **SDL2_image** - 图像加载（PNG、JPEG、WebP、AVIF）
+- **SDL2_ttf** - 字体渲染
+- **SDL2_mixer** - 音频播放
+- **Lua** - Lua 脚本支持
+- **Brotli/Zstd** - 数据压缩
+
+## 技术特点
+
+1. **多编码支持**：GBK、SJIS、UTF-8 自动检测
+2. **SIMD 优化**：resize_image 使用 SIMD 指令加速
+3. **脏矩形渲染**：DirtyRect 优化重绘区域
+4. **跨平台抽象**：BaseReader 统一文件访问
+5. **脚本加密**：支持 nt2、nt3 加密格式
+
+## 开发规范
+
+1. **编码规范**：使用 `-` 替代 TAB，遵循原有代码风格
+2. **CMake 结构**：顶层 CMakeLists.txt + 各模块 CMakeLists.txt
+3. **跨平台**：使用 `#ifdef` 处理平台差异
+4. **SIMD**：使用 intrinsics 替代汇编

@@ -1,0 +1,105 @@
+---
+description: "玩家输入：键盘、鼠标、手柄（SDL2）| 适用：ONScripter_event、MenuUI、SDL 事件循环、按键映射、光标 | 关键词：SDL_KEY、SDL_MOUSE、GameController、Joystick、transKey、setcursor、warpMouse、cursor_info"
+alwaysApply: false
+globs:
+  - "src/onsyuri/ONScripter_event.cpp"
+  - "src/onsyuri/ONScripter.cpp"
+  - "launcher/menu_ui.cpp"
+  - "launcher/menu_ui.h"
+  - "src/onsyuri/ONScripter_animation.cpp"
+  - "src/onsyuri/ONScripter_command.cpp"
+  - "src/onsyuri/ONScripter_image.cpp"
+---
+
+# 玩家输入与交互
+
+本仓库里与「玩家输入」相关的代码分两处：**主引擎 `onsyuri`**（游戏内）与 **Launcher 启动器**（选游戏菜单）。均基于 **SDL2**。
+
+## 主引擎（`src/onsyuri/`）
+
+### 初始化（`ONScripter::initSDL`，`ONScripter.cpp`）
+
+- `SDL_Init` 包含 `SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER`。
+- 优先 `SDL_GameControllerOpen(0)`；失败则 `SDL_JoystickOpen(0)` 作为回退。
+- `SDL_JoystickEventState(SDL_ENABLE)`，保证能收到 `JOYBUTTON` / `JOYHAT` / `JOYAXISMOTION`。
+
+### 事件循环（`ONScripter_event.cpp`）
+
+- 主循环使用 `SDL_WaitEventTimeout`（约 16ms），无事件时会轮询手柄按钮（`pollJoystickButtons`）以兼容部分平台。
+- 合并连续 `SDL_MOUSEMOTION` / `SDL_FINGERMOTION`，减少无效处理。
+
+### 键盘
+
+- `SDL_KEYDOWN` / `SDL_KEYUP`：先经 `transKey()`（部分平台如 `IPODLINUX` / `WINCE` 有额外映射），再进入 `keyDownEvent` / `keyUpEvent` / `keyPressEvent`。
+- `SDL_CONTROLLERBUTTON*`：经 `transControllerButton()` 转成逻辑键码，再走同一套键盘路径。
+
+### 鼠标（桌面/Web 等，非纯触摸分支）
+
+- `SDL_MOUSEMOTION`：坐标按 `render_view_rect` 与 `screen_scale_ratio` 换算后，`mouseMoveEvent`；若 `btndown_flag` 且按住键，可能转为 `mousePressEvent`。
+- `SDL_MOUSEBUTTONDOWN` / `SDL_MOUSEBUTTONUP`：`mousePressEvent`。
+- `SDL_MOUSEWHEEL`：`mouseWheelEvent`。
+
+### 鼠标光标
+
+引擎侧**没有**使用 SDL 的系统光标 API（`SDL_ShowCursor` / `SDL_SetCursor` / `SDL_CreateSystemCursor` 等在 `src/onsyuri` 中无调用）。与「光标」相关的实现分三类：
+
+1. **游戏内绘制的指针图（sprite）**  
+   - `ONScripter` 成员 `cursor_info[2]`（`AnimationInfo`），对应等待点击 / 换页等两种状态（默认图像名见 `ONScripter_animation.cpp` 中 `DEFAULT_CURSOR_WAIT`、`DEFAULT_CURSOR_NEWPAGE`）。  
+   - `loadCursor()`（`ONScripter_animation.cpp`）根据脚本或默认标签加载资源、`setupAnimationInfo`；脚本命令 **`setcursor`** / **`abssetcursor`**（`ONScripter_command.cpp`）会调用 `loadCursor`。  
+   - 绘制走 `ONScripter_image.cpp` 等对 `cursor_info` 的 `drawTaggedSurface` 路径，与 `draw_cursor_flag`、`REFRESH_CURSOR_MODE` 等刷新逻辑配合（动画/停止动画见同文件与 `ONScripter_animation.cpp` 中 `stopAnimation`）。  
+   - 存档中与光标相关的字段在 `ONScripter_file2.cpp` 读写（图像名、是否绝对坐标、位置等）。
+
+2. **操作系统指针位置（warp）**  
+   - `warpMouse(int x, int y)`（`ONScripter.cpp`）封装 **`SDL_WarpMouseInWindow`**，用于把系统鼠标移到窗口内指定像素。  
+   - 脚本 **`movemousecursor`**：按 `screen_ratio`、`render_view_rect` 等换算后调用 `warpMouse`。  
+   - **`shiftCursorOnButton`**（`ONScripter_event.cpp`）：用方向键在按钮间切换时，先 `mouseOverCheck` 更新悬停状态，再 `warpMouse`；注释说明**不能仅依赖** OS 指针移动来更新按钮态。  
+   - `ONScripter_rmenu.cpp` 等场景在关闭菜单时会恢复指针位置（`warpMouse`）。
+
+3. **与「鼠标箭头」无关的脚本名（易混）**  
+   - **`getcursor`**：设置 `getcursor_flag`，用方向键移动的是**脚本/文本输入相关**的逻辑光标，不是更换 `cursor_info` 贴图。  
+   - **`getcursorpos` / `getcursorpos2`**：写入的是 **`sentence_font`** 等排版坐标，不是 SDL 鼠标 `(x,y)`。
+
+### 触摸（`IOS` / `ANDROID` / `WINRT`）
+
+- `SDL_FINGERMOTION` / `SDL_FINGERDOWN` / `SDL_FINGERUP`：转换为等效鼠标坐标与按键，并可能触发 `convTouchKey`；多指有额外逻辑（如多指映射 Ctrl）。
+
+### 手柄（Joystick API）
+
+- `SDL_JOYBUTTONDOWN` / `UP`：仅处理当前打开的 `joystick` 实例；`transJoystickButton(按钮索引)` 映射到 `SDL_Keycode`（源码内注释为「Loong Gamepad」一类布局），再 `transKey` 后走键盘事件。
+- `SDL_JOYHATMOTION`：十字键变化拆成上下左右，对应 `SDLK_UP/DOWN/LEFT/RIGHT` 的按下/抬起。
+- `SDL_JOYAXISMOTION`：无 HAT 时，左摇杆轴经死区（`ONS_JOY_AXIS_DEADZONE`）模拟方向键；若设备有 HAT 则可能忽略轴，避免冲突。
+
+### GameController API
+
+- `SDL_CONTROLLERBUTTONDOWN` / `UP`：`transControllerButton` 映射到键码后，与键盘共用处理函数。
+- `SDL_CONTROLLERDEVICEREMOVED`：关闭 `controller`。
+- 设备添加等与 Launcher 类似，在引擎事件分支中处理（见 `ONScripter_event.cpp` 中 `SDL_CONTROLLER*` / `SDL_JOY*` 分支）。
+
+## Launcher 启动器（`launcher/menu_ui.cpp`）
+
+### 事件循环
+
+- `MenuUI::run`：`SDL_PollEvent` 单次帧内消化队列；`SDL_Delay(50)` 约 20 FPS 重绘。
+
+### 键盘
+
+- `handleKey`：`ESC` / `q` 退出；`UP`/`DOWN` 换条目；`RETURN` / `SPACE` 确认。
+
+### 手柄（与引擎映射不同，此处为菜单专用）
+
+- `SDL_CONTROLLERBUTTONDOWN`：`A`/`B` 确认；`DPAD_UP`/`DOWN` 移动选中；`BTN_MENU`（代码里与掌机布局一致，如 index 10）退出。
+- `SDL_CONTROLLERAXISMOTION`：仅 `SDL_CONTROLLER_AXIS_LEFTY` 经 `handleControllerAxis`（死区 `AXIS_DEADZONE`）上下选。
+- `SDL_JOYBUTTONDOWN`：按索引 `BTN_A` / `BTN_B` 确认，`BTN_MENU` 退出（与引擎全局 `transJoystickButton` 不是同一套语义）。
+- `SDL_JOYAXISMOTION`：仅 axis 1（Y）走 `handleJoyAxis`；`SDL_JOYHATMOTION`：上下对应 `trySelectUp` / `trySelectDown`。
+- 设备插拔：`SDL_JOYDEVICE*` / `SDL_CONTROLLERDEVICE*`，`handleDeviceAdded` / `handleDeviceRemoved`。
+
+### 鼠标
+
+- **当前启动器未处理 `SDL_MOUSE*`**：列表仅能通过键盘与手柄操作；若需点击选游戏，要在 `MenuUI::run` 中自行补充鼠标命中检测与事件分支。
+- 未调用 SDL 光标 API，**使用系统默认指针**即可见箭头；无游戏内自定义光标图层。
+
+## 修改输入行为时的注意点
+
+1. **引擎**：改键位或手柄映射时，同步检查 `transKey`、`transJoystickButton`、`transControllerButton` 与 `mousePressEvent` / `keyPressEvent` 是否会重复触发（如 `btndown_flag`）。
+2. **Launcher**：改手柄逻辑时区分「SDL GameController」与「原始 Joystick」两条路径；掌机物理键位索引（0/1/10 等）与引擎内全局映射表可能不一致，属有意为之。
+3. **平台宏**：触摸与鼠标分支由 `IOS`/`ANDROID`/`WINRT`/`WEB` 等宏隔离，改条件编译路径时需在目标平台实测。

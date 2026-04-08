@@ -1,0 +1,61 @@
+---
+description: "游戏启动器 launcher 架构 | 适用：菜单 UI、游戏列表、资源加载、资源包构建 | 关键词：menu_ui、game_list、resource_pak、pak_builder"
+alwaysApply: false
+globs:
+  - "launcher/**"
+---
+
+# 游戏启动器（Launcher）架构
+
+## 目录
+
+`launcher/`（构建入口见 `launcher/CMakeLists.txt`）
+
+## 核心文件
+
+| 文件 | 职责 |
+|------|------|
+| `CMakeLists.txt` | Launcher 可执行目标与依赖 |
+| `main.cpp` | 程序入口，初始化 SDL2、加载资源、进入主循环 |
+| `menu_ui.cpp/h` | 菜单 UI 管理（游戏选择、设置界面） |
+| `game_list.cpp/h` | 游戏列表管理（扫描、排序、选择） |
+| `options.cpp/h` | 配置选项管理（分辨率、音量等） |
+| `resource_loader.cpp/h` | 资源加载（纹理、字体等） |
+| `resource_pak.cpp/h` | 资源包读写（游戏资源封装格式） |
+| `pak_builder.cpp` | 资源包构建工具 |
+
+## 目录结构
+
+```
+launcher/
+├── main.cpp              # 入口
+├── menu_ui.cpp/h        # 菜单 UI
+├── game_list.cpp/h      # 游戏列表
+├── options.cpp/h        # 选项设置
+├── resource_loader.cpp/h # 资源加载器
+├── resource_pak.cpp/h  # 资源包
+├── pak_builder.cpp      # 打包工具
+└── assets/              # 启动器资源（背景图、字体）
+```
+
+## 主要功能
+
+1. **游戏列表**：扫描目录显示可用游戏，支持多游戏管理
+2. **菜单 UI**：显示游戏封面、启动按钮、设置选项
+3. **资源配置**：读取/写入游戏资源配置（save 目录、字体等）
+4. **资源包**：支持 .pak 格式的游戏资源封装
+5. **游戏启动**：调用主引擎 `onsyuri` 运行选中的游戏
+
+## 依赖
+
+- **SDL2** - 窗口、渲染、输入
+- **SDL2_ttf** - 字体渲染
+- **SDL2_image** - 图片加载
+
+## 与主引擎的关系
+
+Launcher 作为独立程序运行在 `onsyuri` 之前，用户通过它选择要运行的游戏，然后启动 `onsyuri` 加载选中的游戏资源。
+
+## 输入说明
+
+键盘与手柄在 `menu_ui.cpp` 中处理；与主引擎的全局按键映射不完全相同。详见 `.cursor/rules/input/player-input.mdc`。
