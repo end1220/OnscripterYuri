@@ -491,6 +491,7 @@ private:
     void drawTaggedSurface(SDL_Surface *dst_surface, AnimationInfo *anim, SDL_Rect &clip);
     void stopAnimation(int click);
     void loadCursor(int no, const char *str, int x, int y, bool abs_flag = false);
+    void tryLoadPointerFallbackCursor();
 
     // ----------------------------------------
     // variables and methods relevant to effect

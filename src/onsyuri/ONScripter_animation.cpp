@@ -24,6 +24,7 @@
 
 #include "ONScripter.h"
 #include "Utils.h"
+#include <cstdio>
 #ifdef USE_BUILTIN_LAYER_EFFECTS
 #include "builtin_layer.h"
 #endif
@@ -502,4 +503,67 @@ void ONScripter::loadCursor(int no, const char *str, int x, int y, bool abs_flag
         if (no == 0) ai->deleteImageName();
         else         ai->deleteImageName();
     }
+}
+
+void ONScripter::tryLoadPointerFallbackCursor()
+{
+    if (cursor_info[0].image_surface != NULL)
+        return;
+
+    static bool pointer_fallback_tried = false;
+    if (pointer_fallback_tried)
+        return;
+    pointer_fallback_tried = true;
+
+    char *base = SDL_GetBasePath();
+    if (base == NULL)
+        return;
+
+    char path[2048];
+    const char *rel[] = { "assets/cursor.png", "cursor.png" };
+    SDL_Surface *surf = NULL;
+    for (size_t i = 0; i < sizeof(rel) / sizeof(rel[0]); i++) {
+        snprintf(path, sizeof(path), "%s%s", base, rel[i]);
+        surf = IMG_Load(path);
+        if (surf != NULL) {
+            break;
+        }
+    }
+    SDL_free(base);
+
+    if (surf == NULL) {
+        return;
+    }
+
+    cursor_info[0].deleteSurface(false);
+    cursor_info[0].removeTag();
+    cursor_info[0].num_of_cells = 1;
+    cursor_info[0].current_cell = 0;
+
+    bool has_alpha = (surf->format->Amask != 0);
+    cursor_info[0].trans_mode =
+        has_alpha ? AnimationInfo::TRANS_ALPHA : AnimationInfo::TRANS_COPY;
+    surf = cursor_info[0].setupImageAlpha(surf, NULL, has_alpha);
+    if (surf == NULL)
+        return;
+
+    if (screen_ratio2 != screen_ratio1 && !disable_rescale_flag && accumulation_surface != NULL) {
+        SDL_Surface *src_s = surf;
+        int w = src_s->w * screen_ratio1 / screen_ratio2;
+        int h = src_s->h * screen_ratio1 / screen_ratio2;
+        if (w < 1) w = 1;
+        if (h < 1) h = 1;
+        SDL_PixelFormat *fmt = accumulation_surface->format;
+        SDL_Surface *scaled = SDL_CreateRGBSurface(SDL_SWSURFACE, w, h,
+                                                   fmt->BitsPerPixel, fmt->Rmask, fmt->Gmask, fmt->Bmask, fmt->Amask);
+        if (scaled != NULL) {
+            resizeSurface(src_s, scaled);
+            SDL_FreeSurface(src_s);
+            surf = scaled;
+        }
+    }
+
+    cursor_info[0].abs_flag = true;
+    cursor_info[0].visible = true;
+    cursor_info[0].setImage(surf, texture_format);
 }

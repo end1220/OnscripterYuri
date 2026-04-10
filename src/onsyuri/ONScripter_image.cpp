@@ -797,11 +797,17 @@ void ONScripter::refreshSurface( SDL_Surface *surface, SDL_Rect *clip_src, int r
             text_info.blendOnSurface( surface, 0, 0, clip );
     }
 
-    if ( refresh_mode & REFRESH_CURSOR_MODE && !textgosub_label ){
-        if ( clickstr_state == CLICK_WAIT )
-            drawTaggedSurface( surface, &cursor_info[0], clip );
-        else if ( clickstr_state == CLICK_NEWPAGE )
-            drawTaggedSurface( surface, &cursor_info[1], clip );
+    if ( refresh_mode & REFRESH_CURSOR_MODE ){
+        if (input_mode == INPUT_MODE_POINTER) {
+            if (cursor_info[0].image_surface)
+                drawTaggedSurface( surface, &cursor_info[0], clip );
+        }
+        else if ( !textgosub_label ){
+            if ( clickstr_state == CLICK_WAIT )
+                drawTaggedSurface( surface, &cursor_info[0], clip );
+            else if ( clickstr_state == CLICK_NEWPAGE )
+                drawTaggedSurface( surface, &cursor_info[1], clip );
+        }
     }
 
     if (show_dialog_flag)

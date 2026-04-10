@@ -1220,11 +1220,20 @@ void ONScripter::runEventLoop()
         if (step < 1) step = 1;
         return value >= 0 ? step : -step;
     };
+    auto updatePointerCursorSprite = [&]() {
+        tryLoadPointerFallbackCursor();
+        int cursor_x = pointer_cursor_x * screen_ratio1 / screen_ratio2;
+        int cursor_y = pointer_cursor_y * screen_ratio1 / screen_ratio2;
+        cursor_info[0].pos.x = cursor_x;
+        cursor_info[0].pos.y = cursor_y;
+    };
     auto updatePointerByStick = [&](Sint16 axis_x, Sint16 axis_y) -> bool {
         bool active = ((axis_x >= 0 ? axis_x : -axis_x) > pointer_axis_deadzone) ||
                       ((axis_y >= 0 ? axis_y : -axis_y) > pointer_axis_deadzone);
         if (active) {
-            if (input_mode != INPUT_MODE_POINTER) syncPointerFromCurrentState();
+            if (input_mode != INPUT_MODE_POINTER) {
+                syncPointerFromCurrentState();
+            }
             input_mode = INPUT_MODE_POINTER;
             last_left_stick_active_ms = SDL_GetTicks();
         } else if (input_mode != INPUT_MODE_POINTER) {
@@ -1238,6 +1247,11 @@ void ONScripter::runEventLoop()
         pointer_cursor_x += dx;
         pointer_cursor_y += dy;
         clampScriptPointer(pointer_cursor_x, pointer_cursor_y);
+        updatePointerCursorSprite();
+
+        /* Force redraw so engine cursor follows stick even without click-wait cursor state.
+         * Must pass a dirty rect: plain flush() with rect==NULL skips flushDirect when dirty_rect is empty. */
+        flush(refreshMode() | REFRESH_CURSOR_MODE, &screen_rect);
 
         SDL_MouseMotionEvent mevent;
         SDL_memset(&mevent, 0, sizeof(mevent));
@@ -1250,6 +1264,25 @@ void ONScripter::runEventLoop()
             SDL_GetTicks() - last_left_stick_active_ms >= pointer_idle_timeout_ms) {
             input_mode = INPUT_MODE_TRADITIONAL;
         }
+    };
+    auto drivePointerByCurrentStick = [&]() -> bool {
+        /* Read live axis state: cached values from last event can stay non-zero briefly
+         * after the stick returns to center, which caused "inertia" motion. */
+        SDL_JoystickUpdate();
+        if (controller != NULL) {
+            controller_left_x = (Sint16)SDL_GameControllerGetAxis(
+                controller, SDL_CONTROLLER_AXIS_LEFTX);
+            controller_left_y = (Sint16)SDL_GameControllerGetAxis(
+                controller, SDL_CONTROLLER_AXIS_LEFTY);
+            return updatePointerByStick(controller_left_x, controller_left_y);
+        }
+        if (joystick != NULL) {
+            int n = SDL_JoystickNumAxes(joystick);
+            joystick_left_x = n > 0 ? (Sint16)SDL_JoystickGetAxis(joystick, 0) : 0;
+            joystick_left_y = n > 1 ? (Sint16)SDL_JoystickGetAxis(joystick, 1) : 0;
+            return updatePointerByStick(joystick_left_x, joystick_left_y);
+        }
+        return false;
     };
     auto pointerLeftClick = [&](bool down, Uint32 timestamp) -> bool {
         SDL_MouseButtonEvent bev;
@@ -1306,6 +1339,7 @@ void ONScripter::runEventLoop()
 
     while ( true ) {
         if (!SDL_WaitEventTimeout(&event, 16)) {
+            if (drivePointerByCurrentStick()) return;
             updatePointerIdleMode();
             if (pollJoystickButtons()) return;
             continue;
@@ -1317,6 +1351,7 @@ void ONScripter::runEventLoop()
             SMPEG_status(layer_smpeg_sample);
 #endif    
         bool ret = false;
+        bool stick_updated_this_event = false;
         // ignore continous SDL_MOUSEMOTION
         while (event.type == SDL_MOUSEMOTION || event.type == SDL_FINGERMOTION) {
             if ( SDL_PeepEvents( &tmp_event, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT ) == 0 ) break;
@@ -1525,6 +1560,7 @@ void ONScripter::runEventLoop()
             if (event.jaxis.axis == 0) joystick_left_x = event.jaxis.value;
             else if (event.jaxis.axis == 1) joystick_left_y = event.jaxis.value;
             else break;
+            stick_updated_this_event = true;
 
             if (updatePointerByStick(joystick_left_x, joystick_left_y)) return;
             if (input_mode == INPUT_MODE_POINTER) break;
@@ -1667,6 +1703,7 @@ void ONScripter::runEventLoop()
                 if (event.caxis.axis == SDL_CONTROLLER_AXIS_LEFTX) controller_left_x = event.caxis.value;
                 else if (event.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY) controller_left_y = event.caxis.value;
                 else break;
+                stick_updated_this_event = true;
                 ret = updatePointerByStick(controller_left_x, controller_left_y);
                 if (ret) return;
             }
@@ -1784,6 +1821,7 @@ void ONScripter::runEventLoop()
           default:
             break;
         }
+        if (!stick_updated_this_event && drivePointerByCurrentStick()) return;
         updatePointerIdleMode();
         if (pollJoystickButtons()) return;
     }

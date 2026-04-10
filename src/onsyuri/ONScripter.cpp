@@ -78,9 +78,20 @@ void ONScripter::calcRenderRect() {
     screen_device_width = width;
     screen_device_height = height;
 
-    bool shouldAlign = (!stretch_mode || !fullscreen_mode) && (!force_window_height || !force_window_width);
+    const bool force_both_dims = force_window_height && force_window_width;
+    bool shouldAlign = (!stretch_mode || !fullscreen_mode) && !force_both_dims;
 
-    if (shouldAlign) {
+    if (stretch_mode && fullscreen_mode && !force_both_dims) {
+        /* Fullscreen stretch: fill output width, scale height by game aspect ratio (no non-uniform stretch). */
+        screen_device_width = width;
+        screen_device_height = (int)ceil(screen_height * ((float)width / screen_width));
+        if (screen_device_height > height) {
+            screen_device_width = width;
+            screen_device_height = height;
+            alignAspectRatio(screen_width, screen_height, screen_device_width, screen_device_height);
+        }
+    }
+    else if (shouldAlign) {
         alignAspectRatio(screen_width, screen_height, screen_device_width, screen_device_height);
     }
 
@@ -401,7 +412,7 @@ ONScripter::ONScripter()
     pointer_cursor_x = 0;
     pointer_cursor_y = 0;
     pointer_axis_deadzone = 32767 * 20 / 100;
-    pointer_axis_max_step = 28;
+    pointer_axis_max_step = 10;
     last_left_stick_active_ms = 0;
     pointer_idle_timeout_ms = 5000;
     vsync = true;
@@ -911,7 +922,7 @@ void ONScripter::flushDirect( SDL_Rect &rect, int refresh_mode )
 
 #if defined(USE_GLES)
     if (isnan(sharpness)) {
-        if((stretch_mode && fullscreen_mode)||(force_window_height && force_window_width)){
+        if (force_window_height && force_window_width) {
             SDL_RenderCopy(renderer, texture, NULL, NULL);
         }
         else {
@@ -923,7 +934,7 @@ void ONScripter::flushDirect( SDL_Rect &rect, int refresh_mode )
     }
 #else
 
-    if((stretch_mode && fullscreen_mode)||(force_window_height && force_window_width)) {
+    if (force_window_height && force_window_width) {
         SDL_RenderCopy(renderer, texture, NULL, NULL);
     }
     else {
