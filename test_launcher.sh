@@ -24,6 +24,6 @@ fi
     --games-root "$GAME_ROOT" \
     --font "$LAUNCHER_DIR/assets/font.ttf" \
     --launcher-data-dir "$LAUNCHER_DIR" \
-    --windowed 960 720 \
+    --windowed 640 480 \
     --pass-arg "--fullscreen2" --pass-arg "--sharpness" --pass-arg "9.1" \
     "$@" >"$ONS_DIR/log0.txt" 2>&1

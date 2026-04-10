@@ -5,6 +5,11 @@ add_executable(onsyuri_launcher
     game_list.cpp
     options.cpp
     menu_ui.cpp
+    launcher_theme.cpp
+    launcher_texture_cache.cpp
+    launcher_game_list_view_vertical.cpp
+    launcher_chrome.cpp
+    launcher_menu_input.cpp
     resource_pak.cpp
     resource_loader.cpp
 )
