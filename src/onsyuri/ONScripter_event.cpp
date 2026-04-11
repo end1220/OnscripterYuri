@@ -1231,18 +1231,35 @@ void ONScripter::runEventLoop()
         bool active = ((axis_x >= 0 ? axis_x : -axis_x) > pointer_axis_deadzone) ||
                       ((axis_y >= 0 ? axis_y : -axis_y) > pointer_axis_deadzone);
         if (active) {
-            if (input_mode != INPUT_MODE_POINTER) {
+            bool entering_pointer = (input_mode != INPUT_MODE_POINTER);
+            if (entering_pointer) {
                 syncPointerFromCurrentState();
+                last_left_stick_active_ms = SDL_GetTicks();
             }
             input_mode = INPUT_MODE_POINTER;
-            last_left_stick_active_ms = SDL_GetTicks();
         } else if (input_mode != INPUT_MODE_POINTER) {
             return false;
+        }
+
+        /* Magnitude snap for movement: after circular input, X/Y decay independently and
+         * leave a curved tail; snap when vector length is small enough. */
+        {
+            int snap = pointer_axis_deadzone + (32767 * 12 / 100);
+            long long lx = axis_x;
+            long long ly = axis_y;
+            long long mag2 = lx * lx + ly * ly;
+            long long snap2 = (long long)snap * snap;
+            if (mag2 <= snap2) {
+                axis_x = 0;
+                axis_y = 0;
+            }
         }
 
         int dx = axisToStep(axis_x);
         int dy = axisToStep(axis_y);
         if (dx == 0 && dy == 0) return false;
+
+        last_left_stick_active_ms = SDL_GetTicks();
 
         pointer_cursor_x += dx;
         pointer_cursor_y += dy;
@@ -1263,7 +1280,14 @@ void ONScripter::runEventLoop()
         if (input_mode == INPUT_MODE_POINTER &&
             SDL_GetTicks() - last_left_stick_active_ms >= pointer_idle_timeout_ms) {
             input_mode = INPUT_MODE_TRADITIONAL;
+            flush(refreshMode() | REFRESH_CURSOR_MODE, &screen_rect);
         }
+    };
+    auto exitPointerModeForPhysicalDpad = [&]() {
+        if (input_mode != INPUT_MODE_POINTER)
+            return;
+        input_mode = INPUT_MODE_TRADITIONAL;
+        flush(refreshMode() | REFRESH_CURSOR_MODE, &screen_rect);
     };
     auto drivePointerByCurrentStick = [&]() -> bool {
         /* Read live axis state: cached values from last event can stay non-zero briefly
@@ -1351,7 +1375,6 @@ void ONScripter::runEventLoop()
             SMPEG_status(layer_smpeg_sample);
 #endif    
         bool ret = false;
-        bool stick_updated_this_event = false;
         // ignore continous SDL_MOUSEMOTION
         while (event.type == SDL_MOUSEMOTION || event.type == SDL_FINGERMOTION) {
             if ( SDL_PeepEvents( &tmp_event, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT ) == 0 ) break;
@@ -1530,6 +1553,9 @@ void ONScripter::runEventLoop()
                                  (int)event.jhat.which, (int)event.jhat.hat, (unsigned int)hat, (unsigned int)prev_hat);
                 auto dpadKey = [&](Uint8 mask, ONS_Key k) {
                     if ((hat & mask) != (prev_hat & mask)) {
+                        if (input_mode == INPUT_MODE_POINTER && (hat & mask) &&
+                            (k == SDLK_UP || k == SDLK_DOWN || k == SDLK_LEFT || k == SDLK_RIGHT))
+                            exitPointerModeForPhysicalDpad();
                         SDL_Event kev;
                         kev.key.keysym.sym = transKey(k);
                         kev.key.keysym.mod = 0;
@@ -1560,9 +1586,6 @@ void ONScripter::runEventLoop()
             if (event.jaxis.axis == 0) joystick_left_x = event.jaxis.value;
             else if (event.jaxis.axis == 1) joystick_left_y = event.jaxis.value;
             else break;
-            stick_updated_this_event = true;
-
-            if (updatePointerByStick(joystick_left_x, joystick_left_y)) return;
             if (input_mode == INPUT_MODE_POINTER) break;
 
             if (SDL_JoystickNumHats(joystick) > 0) {
@@ -1660,6 +1683,13 @@ void ONScripter::runEventLoop()
 
           case SDL_CONTROLLERBUTTONDOWN:
             if (input_mode == INPUT_MODE_POINTER &&
+                (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP ||
+                 event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_DOWN ||
+                 event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT ||
+                 event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT)) {
+                exitPointerModeForPhysicalDpad();
+            }
+            if (input_mode == INPUT_MODE_POINTER &&
                 event.cbutton.button == SDL_CONTROLLER_BUTTON_A) {
                 ret = pointerLeftClick(true, event.cbutton.timestamp);
                 if (ret) return;
@@ -1703,9 +1733,8 @@ void ONScripter::runEventLoop()
                 if (event.caxis.axis == SDL_CONTROLLER_AXIS_LEFTX) controller_left_x = event.caxis.value;
                 else if (event.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY) controller_left_y = event.caxis.value;
                 else break;
-                stick_updated_this_event = true;
-                ret = updatePointerByStick(controller_left_x, controller_left_y);
-                if (ret) return;
+                /* Pointer mode uses live-axis polling once per loop to avoid
+                 * replaying stale axis events from SDL queue. */
             }
             break;
 
@@ -1821,7 +1850,7 @@ void ONScripter::runEventLoop()
           default:
             break;
         }
-        if (!stick_updated_this_event && drivePointerByCurrentStick()) return;
+        if (drivePointerByCurrentStick()) return;
         updatePointerIdleMode();
         if (pollJoystickButtons()) return;
     }
