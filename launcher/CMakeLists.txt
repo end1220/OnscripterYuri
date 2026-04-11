@@ -8,6 +8,7 @@ add_executable(onsyuri_launcher
     launcher_theme.cpp
     launcher_texture_cache.cpp
     launcher_game_list_view_vertical.cpp
+    launcher_switch_game_row_view.cpp
     launcher_chrome.cpp
     launcher_menu_input.cpp
     resource_pak.cpp

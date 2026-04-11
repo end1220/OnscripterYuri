@@ -224,8 +224,13 @@ void MenuUI::render(const std::vector<GameEntry> &games, int selected) {
         return;
     }
 
-    bool drewList = listView_.render(renderer_, textureCache_, games, selected, windowW, windowH,
-                                     listClip);
+    bool drewList;
+    if (LauncherTheme::kUseSwitchGameRowLayout)
+        drewList = switchRowView_.render(renderer_, textureCache_, games, selected, windowW, windowH,
+                                         listClip);
+    else
+        drewList = listView_.render(renderer_, textureCache_, games, selected, windowW, windowH,
+                                      listClip);
     SDL_RenderSetClipRect(renderer_, nullptr);
 
     if (!drewList) {
@@ -289,13 +294,12 @@ int MenuUI::run(const std::vector<GameEntry> &games) {
             } else if (e.type == SDL_KEYDOWN) {
                 menuInput_.handleKey(e.key.keysym.sym, selected, count, confirm, quit);
             } else if (e.type == SDL_CONTROLLERAXISMOTION) {
-                if (e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY)
-                    menuInput_.handleControllerAxis(e.caxis.value, selected, count);
+                menuInput_.handleControllerAxisMotion(e.caxis.axis, e.caxis.value, selected, count);
             } else if (e.type == SDL_JOYAXISMOTION) {
                 Sint16 v = static_cast<Sint16>(e.jaxis.value);
-                menuInput_.handleJoyAxis(e.jaxis.axis, v, selected, count);
+                menuInput_.handleJoyAxisMotion(e.jaxis.axis, v, selected, count);
             } else if (e.type == SDL_JOYHATMOTION) {
-                menuInput_.handleJoyHat(e.jhat.value, selected, count);
+                menuInput_.handleJoyHatMotion(e.jhat.value, selected, count);
             } else if (e.type == SDL_JOYBUTTONDOWN) {
                 int btn = e.jbutton.button;
                 if (btn == BTN_MENU)

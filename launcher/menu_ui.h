@@ -4,6 +4,7 @@
 #include "game_list.h"
 #include "launcher_chrome.h"
 #include "launcher_game_list_view_vertical.h"
+#include "launcher_switch_game_row_view.h"
 #include "launcher_menu_input.h"
 #include "launcher_texture_cache.h"
 
@@ -43,6 +44,7 @@ private:
 
     LauncherTextureCache textureCache_;
     VerticalGameListView listView_;
+    SwitchGameRowView switchRowView_;
     LauncherChrome chrome_;
     LauncherMenuInput menuInput_;
 };
