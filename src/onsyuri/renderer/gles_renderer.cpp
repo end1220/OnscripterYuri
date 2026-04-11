@@ -152,16 +152,26 @@ void GlesRenderer::copy(const int window_x, const int window_y) {
     if (_pause) return;
 
     if (SDL_GL_GetCurrentContext() != context && SDL_GL_MakeCurrent(window, context) < 0) return;
+    int drawable_h = 0;
+    SDL_GL_GetDrawableSize(window, nullptr, &drawable_h);
+    if (drawable_h <= 0)
+        drawable_h = window_y + output_size[1];
+    /* SDL: (window_x, window_y) is top-left of the quad; GL viewport origin is bottom-left. */
+    int gl_vp_y = drawable_h - window_y - output_size[1];
+    if (gl_vp_y < 0)
+        gl_vp_y = 0;
+
     glActiveTexture(GL_TEXTURE0);
     SDL_GL_BindTexture(texture, nullptr, nullptr);
-    glViewport(window_x, -window_y, output_size[0], output_size[1]);
+    glViewport(window_x, gl_vp_y, output_size[0], output_size[1]);
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
     glUseProgram(post_program);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
     glEnableVertexAttribArray(0);
     glUniform4f(const_buffer_location[0], cas_con[0], cas_con[1], cas_con[2], cas_con[3]);
     glUniform4f(const_buffer_location[1], cas_con[4], cas_con[5], cas_con[6], cas_con[7]);
-    glUniform4f(const_buffer_location[2], window_x, window_y, 0.0f, 0.0f);
+    /* Const2 must stay consistent with glViewport y; see gl_FragCoord + vec2(-Const2.x, Const2.y) in post_cas. */
+    glUniform4f(const_buffer_location[2], (float)window_x, (float)-gl_vp_y, 0.0f, 0.0f);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     GLES_CHECK_ERROR("copy")
 }
