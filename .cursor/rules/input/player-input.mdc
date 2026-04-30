@@ -59,6 +59,11 @@ globs:
    - **`getcursor`**：设置 `getcursor_flag`，用方向键移动的是**脚本/文本输入相关**的逻辑光标，不是更换 `cursor_info` 贴图。  
    - **`getcursorpos` / `getcursorpos2`**：写入的是 **`sentence_font`** 等排版坐标，不是 SDL 鼠标 `(x,y)`。
 
+### 掌机摇杆指针模式
+
+- Linux 掌机的左摇杆逻辑指针、A/B 语义、空闲隐藏、D-pad 退出和动画卡顿风险，详见 `.cursor/rules/input/handheld-pointer-mode.mdc`。
+- 修改 `runEventLoop()` 内指针相关 lambda 或 `mousePressEvent` / `mouseMoveEvent` / `refreshMouseOverButton` 时，应同步核对 `摇杆与指针模式问题总结.md` 中的实机现象。
+
 ### 触摸（`IOS` / `ANDROID` / `WINRT`）
 
 - `SDL_FINGERMOTION` / `SDL_FINGERDOWN` / `SDL_FINGERUP`：转换为等效鼠标坐标与按键，并可能触发 `convTouchKey`；多指有额外逻辑（如多指映射 Ctrl）。

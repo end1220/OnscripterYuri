@@ -830,11 +830,6 @@ bool ONScripter::keyPressEvent( SDL_KeyboardEvent *event )
         setFullScreen(!fullscreen_mode);
         return true;
       }
-      if (event->keysym.sym == SDLK_F10) {
-        stretch_mode = !fullscreen_mode; 
-        setFullScreen(!fullscreen_mode);
-        return true;
-      }
 #endif
         if ( variable_edit_mode ){
             variableEditMode( event );
@@ -1227,6 +1222,27 @@ void ONScripter::runEventLoop()
         cursor_info[0].pos.x = cursor_x;
         cursor_info[0].pos.y = cursor_y;
     };
+    auto pointerCursorDirtyRect = [&](const SDL_Rect *old_rect) -> SDL_Rect {
+        SDL_Rect dirty = cursor_info[0].pos;
+        if (old_rect != NULL)
+            SDL_UnionRect(old_rect, &cursor_info[0].pos, &dirty);
+        if (dirty.w <= 0 || dirty.h <= 0)
+            dirty = screen_rect;
+        return dirty;
+    };
+    auto flushPointerCursor = [&](const SDL_Rect *old_rect = NULL) {
+        SDL_Rect dirty = pointerCursorDirtyRect(old_rect);
+        flush(refreshMode() | REFRESH_CURSOR_MODE, &dirty);
+    };
+    auto syncPointerMouseOver = [&]() {
+        current_button_state.x = pointer_cursor_x;
+        current_button_state.y = pointer_cursor_y;
+        mouseOverCheck(pointer_cursor_x, pointer_cursor_y);
+    };
+    auto markPointerInteraction = [&](Uint32 timestamp = 0) {
+        if (input_mode == INPUT_MODE_POINTER)
+            last_left_stick_active_ms = timestamp != 0 ? timestamp : SDL_GetTicks();
+    };
     auto updatePointerByStick = [&](Sint16 axis_x, Sint16 axis_y) -> bool {
         bool active = ((axis_x >= 0 ? axis_x : -axis_x) > pointer_axis_deadzone) ||
                       ((axis_y >= 0 ? axis_y : -axis_y) > pointer_axis_deadzone);
@@ -1237,6 +1253,7 @@ void ONScripter::runEventLoop()
                 last_left_stick_active_ms = SDL_GetTicks();
             }
             input_mode = INPUT_MODE_POINTER;
+            markPointerInteraction();
         } else if (input_mode != INPUT_MODE_POINTER) {
             return false;
         }
@@ -1261,6 +1278,7 @@ void ONScripter::runEventLoop()
 
         last_left_stick_active_ms = SDL_GetTicks();
 
+        SDL_Rect old_cursor_rect = cursor_info[0].pos;
         pointer_cursor_x += dx;
         pointer_cursor_y += dy;
         clampScriptPointer(pointer_cursor_x, pointer_cursor_y);
@@ -1268,26 +1286,30 @@ void ONScripter::runEventLoop()
 
         /* Force redraw so engine cursor follows stick even without click-wait cursor state.
          * Must pass a dirty rect: plain flush() with rect==NULL skips flushDirect when dirty_rect is empty. */
-        flush(refreshMode() | REFRESH_CURSOR_MODE, &screen_rect);
+        flushPointerCursor(&old_cursor_rect);
 
         SDL_MouseMotionEvent mevent;
         SDL_memset(&mevent, 0, sizeof(mevent));
         mevent.x = pointer_cursor_x;
         mevent.y = pointer_cursor_y;
+        /* Return true only when hover movement completes an input wait, not merely
+         * because the pointer moved. */
         return mouseMoveEvent(&mevent);
     };
     auto updatePointerIdleMode = [&]() {
         if (input_mode == INPUT_MODE_POINTER &&
             SDL_GetTicks() - last_left_stick_active_ms >= pointer_idle_timeout_ms) {
+            SDL_Rect old_cursor_rect = cursor_info[0].pos;
             input_mode = INPUT_MODE_TRADITIONAL;
-            flush(refreshMode() | REFRESH_CURSOR_MODE, &screen_rect);
+            flushPointerCursor(&old_cursor_rect);
         }
     };
     auto exitPointerModeForPhysicalDpad = [&]() {
         if (input_mode != INPUT_MODE_POINTER)
             return;
+        SDL_Rect old_cursor_rect = cursor_info[0].pos;
         input_mode = INPUT_MODE_TRADITIONAL;
-        flush(refreshMode() | REFRESH_CURSOR_MODE, &screen_rect);
+        flushPointerCursor(&old_cursor_rect);
     };
     auto drivePointerByCurrentStick = [&]() -> bool {
         /* Read live axis state: cached values from last event can stay non-zero briefly
@@ -1309,6 +1331,8 @@ void ONScripter::runEventLoop()
         return false;
     };
     auto pointerLeftClick = [&](bool down, Uint32 timestamp) -> bool {
+        markPointerInteraction(timestamp);
+        syncPointerMouseOver();
         SDL_MouseButtonEvent bev;
         SDL_memset(&bev, 0, sizeof(bev));
         bev.type = down ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP;
@@ -1341,6 +1365,12 @@ void ONScripter::runEventLoop()
             if (now == polled_button_state[i]) continue;
             ONS_Key mapped = transJoystickButton((Uint8)i);
             utils::printInfo("JOYBUTTON POLL: idx=%d state=%d mapped=%d\n", i, (int)now, (int)mapped);
+            if (input_mode == INPUT_MODE_POINTER) markPointerInteraction();
+            if (input_mode == INPUT_MODE_POINTER && i == 1) {
+                if (pointerLeftClick(now != 0, SDL_GetTicks())) handled = true;
+                polled_button_state[i] = now;
+                continue;
+            }
             if (mapped != SDLK_UNKNOWN) {
                 SDL_Event kev;
                 kev.key.keysym.sym = transKey(mapped);
@@ -1500,8 +1530,9 @@ void ONScripter::runEventLoop()
           case SDL_JOYBUTTONDOWN:
             use_polled_joystick_buttons = false;
             if (joystick != NULL && event.jbutton.which == SDL_JoystickInstanceID(joystick)) {
-                if (input_mode == INPUT_MODE_POINTER &&
-                    transJoystickButton(event.jbutton.button) == SDLK_ESCAPE) {
+                if (input_mode == INPUT_MODE_POINTER)
+                    markPointerInteraction(event.jbutton.timestamp);
+                if (input_mode == INPUT_MODE_POINTER && event.jbutton.button == 1) {
                     ret = pointerLeftClick(true, event.jbutton.timestamp);
                     if (ret) return;
                     break;
@@ -1526,8 +1557,9 @@ void ONScripter::runEventLoop()
           case SDL_JOYBUTTONUP:
             use_polled_joystick_buttons = false;
             if (joystick != NULL && event.jbutton.which == SDL_JoystickInstanceID(joystick)) {
-                if (input_mode == INPUT_MODE_POINTER &&
-                    transJoystickButton(event.jbutton.button) == SDLK_ESCAPE) {
+                if (input_mode == INPUT_MODE_POINTER)
+                    markPointerInteraction(event.jbutton.timestamp);
+                if (input_mode == INPUT_MODE_POINTER && event.jbutton.button == 1) {
                     ret = pointerLeftClick(false, event.jbutton.timestamp);
                     if (ret) return;
                     break;
@@ -1689,8 +1721,10 @@ void ONScripter::runEventLoop()
                  event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT)) {
                 exitPointerModeForPhysicalDpad();
             }
+            if (input_mode == INPUT_MODE_POINTER)
+                markPointerInteraction(event.cbutton.timestamp);
             if (input_mode == INPUT_MODE_POINTER &&
-                event.cbutton.button == SDL_CONTROLLER_BUTTON_A) {
+                event.cbutton.button == SDL_CONTROLLER_BUTTON_B) {
                 ret = pointerLeftClick(true, event.cbutton.timestamp);
                 if (ret) return;
                 break;
@@ -1710,8 +1744,10 @@ void ONScripter::runEventLoop()
             break;
 
           case SDL_CONTROLLERBUTTONUP:
+            if (input_mode == INPUT_MODE_POINTER)
+                markPointerInteraction(event.cbutton.timestamp);
             if (input_mode == INPUT_MODE_POINTER &&
-                event.cbutton.button == SDL_CONTROLLER_BUTTON_A) {
+                event.cbutton.button == SDL_CONTROLLER_BUTTON_B) {
                 ret = pointerLeftClick(false, event.cbutton.timestamp);
                 if (ret) return;
                 break;

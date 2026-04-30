@@ -412,7 +412,7 @@ ONScripter::ONScripter()
     pointer_cursor_x = 0;
     pointer_cursor_y = 0;
     pointer_axis_deadzone = 32767 * 20 / 100;
-    pointer_axis_max_step = 10;
+    pointer_axis_max_step = 20;
     last_left_stick_active_ms = 0;
     pointer_idle_timeout_ms = 5000;
     vsync = true;
@@ -831,6 +831,8 @@ void ONScripter::resetSub()
     input_mode = INPUT_MODE_TRADITIONAL;
     pointer_cursor_x = screen_width / 2;
     pointer_cursor_y = screen_height / 2;
+    current_button_state.x = pointer_cursor_x;
+    current_button_state.y = pointer_cursor_y;
     last_left_stick_active_ms = SDL_GetTicks();
 
     // ----------------------------------------
