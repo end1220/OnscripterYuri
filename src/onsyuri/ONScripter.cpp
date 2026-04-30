@@ -412,7 +412,7 @@ ONScripter::ONScripter()
     pointer_cursor_x = 0;
     pointer_cursor_y = 0;
     pointer_axis_deadzone = 32767 * 20 / 100;
-    pointer_axis_max_step = 20;
+    pointer_axis_max_step = 15;
     last_left_stick_active_ms = 0;
     pointer_idle_timeout_ms = 5000;
     vsync = true;
