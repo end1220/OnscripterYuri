@@ -1,40 +1,58 @@
 ---
-description: "Linux 掌机摇杆驱动游戏内逻辑指针的现状、已知问题与修改注意点"
+description: "掌机摇杆逻辑指针模式：最终行为、关键状态与源码入口"
 alwaysApply: false
 globs:
   - "src/onsyuri/ONScripter_event.cpp"
   - "src/onsyuri/ONScripter.cpp"
   - "src/onsyuri/ONScripter.h"
   - "src/onsyuri/ONScripter_image.cpp"
-  - "摇杆与指针模式问题总结.md"
 ---
 
-# 掌机摇杆与指针模式
+# 摇杆光标指针模式（最终实现）
 
-背景：目标平台是 Linux ARM 掌机（Wayland、无物理鼠标）。左摇杆应驱动引擎内逻辑指针，指针模式下按确认键应等效左键；摇杆空闲一段时间后回到传统模式；实体 D-pad 应退出指针模式并隐藏光标。
+面向 Linux 掌机（常无物理鼠标、Wayland）：左摇杆驱动引擎内逻辑坐标 `pointer_cursor_x/y`，自绘光标贴图；与传统手柄方向键/键盘路径并存。
 
-## 当前实现
+## 状态与默认值
 
-- 主逻辑在 `ONScripter::runEventLoop()` 内部 lambda：`updatePointerByStick`、`drivePointerByCurrentStick`、`pointerLeftClick`、`updatePointerIdleMode`、`exitPointerModeForPhysicalDpad`。
-- `drivePointerByCurrentStick()` 每轮读取实时轴值，不依赖单个 `SDL_CONTROLLERAXISMOTION` / `SDL_JOYAXISMOTION` 事件位移；轴事件分支主要缓存状态或保留传统方向键行为。
-- 指针坐标是 `pointer_cursor_x/y`，移动后更新 `cursor_info[0].pos` 并 `flush(refreshMode() | REFRESH_CURSOR_MODE, &screen_rect)`；绘制侧只有 `input_mode == INPUT_MODE_POINTER` 时强制绘制 `cursor_info[0]`。
-- 空闲退出只看 `last_left_stick_active_ms` 与 `pointer_idle_timeout_ms`。当前只有进入指针模式或实际产生 `dx/dy` 位移时刷新计时；摇杆仍出死区但步进为 0 的帧不会续时。
-- `mouseMoveEvent()` 在 `WAIT_BUTTON_MODE` 下调用 `mouseOverCheck()` 更新 `current_over_button`；`mousePressEvent()` 左键分支直接使用已有 `current_over_button`，不会自行按点击坐标重算悬停。
+- `input_mode`：`INPUT_MODE_TRADITIONAL` | `INPUT_MODE_POINTER`
+- `pointer_cursor_x/y`：脚本分辨率下的逻辑指针，移动时钳制在 `[0, screen_width-1]` × `[0, screen_height-1]`
+- `pointer_axis_deadzone`：轴死区约 20%（32767 基准）
+- `pointer_axis_max_step`：`ONScripter` 构造函数里设为 **15**（摇杆推满时每帧最大像素步进上限）
+- `pointer_idle_timeout_ms`：5000；`last_left_stick_active_ms` 用于空闲退出指针模式
 
-## A/B 与输入路径
+`resetSub()` 会把 `pointer_cursor_*` 与 `current_button_state.x/y` 一并设为 **屏幕中心**，避免首次进入指针模式时被旧的 `current_button_state` 拉偏。
 
-- GameController 路径：`transControllerButton()` 采用 Nintendo 式对调，`SDL_CONTROLLER_BUTTON_A -> SDLK_ESCAPE`，`SDL_CONTROLLER_BUTTON_B -> SDLK_RETURN`。但在 `INPUT_MODE_POINTER` 下，`SDL_CONTROLLER_BUTTON_A` 会被提前拦截为 `pointerLeftClick()`，不会走键盘路径。
-- Raw Joystick 路径：`transJoystickButton()` 中 Loong 布局为 `button 0(B) -> SDLK_ESCAPE`、`button 1(A) -> SDLK_RETURN`。指针模式下拦截条件是“映射为 `SDLK_ESCAPE` 的按钮”，因此 Raw Joystick 下实际触发合成左键的是 ESC 映射按钮。
-- 按键命中 UI 按钮依赖 `current_over_button` 是否与 `pointer_cursor_x/y` 同步。若此前没有 `mouseMoveEvent()` 更新悬停，或 `refreshMouseOverButton()` 用系统鼠标位置重置了悬停，合成左键可能退化为 `LCLICK` / 推进文本。
+## 生命周期（均在 `runEventLoop()` 内 lambda）
 
-## 已知风险
+1. **进入指针模式**：左摇杆超出死区 → `input_mode = INPUT_MODE_POINTER`；若刚从传统模式切入，先 `syncPointerFromCurrentState()`（从当前 `current_button_state` 对齐指针），并刷新空闲计时。
+2. **移动**：`drivePointerByCurrentStick()` 每轮 `SDL_JoystickUpdate()` 后读 **实时轴**（优先 `SDL_GameControllerGetAxis`，否则 `SDL_JoystickGetAxis` 轴 0/1），经死区、`axisToStep`、可选矢量尾部 snap 后更新 `pointer_cursor_*`，再 `mouseMoveEvent` 合成坐标（`WAIT_BUTTON_MODE` 下仍会走原有悬停逻辑）。
+3. **空闲退出**：`updatePointerIdleMode()` 超时则回到传统模式并刷新光标区域。
+4. **实体十字键退出**：`SDL_JOYHATMOTION` 与 `SDL_CONTROLLER_BUTTON_DPAD_*` 触发 `exitPointerModeForPhysicalDpad()`。
 
-- `waitEventSub()` 只调用一次 `runEventLoop()`；而 `runEventLoop()` 在无事件分支和循环末尾会因为 `drivePointerByCurrentStick()` 返回 true 直接 `return`。持续摇杆移动可能打断等待定时动画的节拍。
-- 每次指针步进都整屏刷新 cursor mode，可能与 `timerEvent()` / `proceedAnimation()` 在同一线程竞争，掌机上容易表现为 UI 滚动或过场动画卡顿。
-- D-pad 退出路径已存在：`SDL_JOYHATMOTION` 与 `SDL_CONTROLLER_BUTTON_DPAD_*` 会调用 `exitPointerModeForPhysicalDpad()`。若实机异常，先区分当前走 GameController 还是 Raw Joystick。
+摇杆有位移或指针模式下有交互时通过 `markPointerInteraction()` 刷新 `last_left_stick_active_ms`（含合成点击、手柄按键轮询等）。
 
-## 修改原则
+## 合成左键与悬停
 
-- 修复摇杆问题时先对照 `摇杆与指针模式问题总结.md`，不要把已撤销的实验性补丁当作现状。
-- 优先小步改动并在实机验证：动画等待是否被摇杆提前返回打断、A/B 是否按目标产品语义命中按钮、光标空闲隐藏是否符合 UI 场景预期。
-- 若改点击命中，重点考虑在合成左键前同步 `pointer_cursor_x/y` 与 `mouseOverCheck()`；若改动画卡顿，重点评估 `drivePointerByCurrentStick()` 的返回语义和指针刷新频率。
+`pointerLeftClick()`：
+
+1. `markPointerInteraction`
+2. `syncPointerMouseOver()`：把 `current_button_state` 对齐到指针坐标，并 **无条件** `mouseOverCheck(pointer_cursor_x, pointer_cursor_y)`，避免剧情/UI 小按钮场景下 `mousePressEvent` 仍用陈旧 `current_over_button` 退化成空白左键
+3. 构造 `SDL_MouseButtonEvent` 调用 `mousePressEvent`
+
+## GameController 与 Raw Joystick（物理 A = 确认/左键）
+
+在 Nintendo 类物理布局上，SDL 抽象键位与壳子标注常见错位：**合成左键绑定在 `SDL_CONTROLLER_BUTTON_B`**（对应多数设备上的物理 A）。其余键仍经 `transControllerButton()` 走键盘路径。
+
+Raw Joystick（Loong 表注释 `0=B 1=A …`）：指针模式下 **固定用按钮索引 `1`** 触发 `pointerLeftClick`（事件分支与 `pollJoystickButtons` 轮询一致）。
+
+`transControllerButton()` 仍将 **GUIDE** 映射为 `SDLK_F10`；**已不再**在 `keyPressEvent()` 的 `KEYUP` 分支用 F10 切换全屏（避免 Menu/GUIDE 误触）。桌面仍可用 **Alt+Return** 切换全屏。
+
+## 绘制与刷新
+
+- `input_mode == INPUT_MODE_POINTER` 时，`REFRESH_CURSOR_MODE` 始终绘制 `cursor_info[0]`（见 `ONScripter_image.cpp`）
+- 指针移动时用光标 **旧矩形与新矩形并集** 作为 dirty rect 调用 `flush`，避免每次整屏刷新
+
+## 修改时注意
+
+- 改确认键或映射时同时核对 GameController 与 Raw Joystick 两条路径，以及 `pollJoystickButtons` 特判。
+- `refreshMouseOverButton()` 仍用系统鼠标坐标；逻辑指针场景依赖移动/点击路径里的 `mouseOverCheck`，不要轻易假定 OS 指针与 `pointer_cursor_*` 一致。

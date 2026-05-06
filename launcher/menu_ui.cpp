@@ -215,22 +215,34 @@ void MenuUI::render(const std::vector<GameEntry> &games, int selected) {
     SDL_Rect listClip = {0, listTop, windowW, listHeight};
     SDL_RenderSetClipRect(renderer_, &listClip);
 
+    const char *bottomHint = (LauncherTheme::kLayout == LauncherTheme::Layout::kGrid)
+                                 ? LauncherTheme::kBottomOpsHintGrid
+                                 : LauncherTheme::kBottomOpsHintDefault;
+
     if (games.empty()) {
         chrome_.drawEmptyListHint(font_, renderer_, windowW, windowH);
         SDL_RenderSetClipRect(renderer_, nullptr);
-        chrome_.drawBottomOpsHint(font_, renderer_, windowW, windowH,
-                                  LauncherTheme::kBottomOpsHintDefault);
+        chrome_.drawBottomOpsHint(font_, renderer_, windowW, windowH, bottomHint);
         SDL_RenderPresent(renderer_);
         return;
     }
 
-    bool drewList;
-    if (LauncherTheme::kUseSwitchGameRowLayout)
+    bool drewList = false;
+    switch (LauncherTheme::kLayout) {
+    case LauncherTheme::Layout::kGrid:
+        drewList = gridView_.render(renderer_, textureCache_, games, selected, windowW, windowH,
+                                    listClip);
+        break;
+    case LauncherTheme::Layout::kSwitchRow:
         drewList = switchRowView_.render(renderer_, textureCache_, games, selected, windowW, windowH,
                                          listClip);
-    else
+        break;
+    case LauncherTheme::Layout::kVertical:
+    default:
         drewList = listView_.render(renderer_, textureCache_, games, selected, windowW, windowH,
                                       listClip);
+        break;
+    }
     SDL_RenderSetClipRect(renderer_, nullptr);
 
     if (!drewList) {
@@ -240,8 +252,7 @@ void MenuUI::render(const std::vector<GameEntry> &games, int selected) {
         return;
     }
 
-    chrome_.drawBottomOpsHint(font_, renderer_, windowW, windowH,
-                              LauncherTheme::kBottomOpsHintDefault);
+    chrome_.drawBottomOpsHint(font_, renderer_, windowW, windowH, bottomHint);
     SDL_RenderPresent(renderer_);
 }
 

@@ -5,7 +5,7 @@
 
 /**
  * 启动器菜单输入：键盘、GameController、Joystick；防抖与左摇杆。
- * 竖版：上下/摇杆 Y；Switch 横版：左右/摇杆 X（与编译期 LauncherTheme::kUseSwitchGameRowLayout 一致）。
+ * 输入语义随 LauncherTheme::kLayout 切换：竖版、Switch 横版、4x2 Grid。
  */
 class LauncherMenuInput {
 public:
@@ -24,6 +24,8 @@ public:
 private:
     bool trySelectUp(int &selected, int count);
     bool trySelectDown(int &selected, int count);
+    bool trySelectGridUp(int &selected, int count);
+    bool trySelectGridDown(int &selected, int count);
 
     void handleControllerAxisLeftY(Sint16 value, int &selected, int count);
     void handleControllerAxisLeftX(Sint16 value, int &selected, int count);

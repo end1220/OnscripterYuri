@@ -9,10 +9,13 @@
  */
 struct LauncherTheme {
     /**
-     * 编译期开关：true 使用 Switch 式横向游戏行；false 使用竖版列表。
+     * 编译期布局开关；修改后需重新编译。
+     * kUseSwitchGameRowLayout 保留给旧分支判断使用。
      * 修改后需重新编译。
      */
-    static constexpr bool kUseSwitchGameRowLayout = true;
+    enum class Layout { kVertical, kSwitchRow, kGrid };
+    static constexpr Layout kLayout = Layout::kGrid;
+    static constexpr bool kUseSwitchGameRowLayout = (kLayout == Layout::kSwitchRow);
 
     /** 设计稿基准分辨率（与默认窗口 --windowed 960 720 一致） */
     static constexpr int kDesignWidth = 960;
@@ -66,10 +69,27 @@ struct LauncherTheme {
         static constexpr Uint8 kDimMod = 200;
     };
 
+    /** 4x2 网格布局（逻辑像素，面向 960x720 设计分辨率） */
+    struct Grid {
+        static constexpr int kCols = 4;
+        static constexpr int kRows = 2;
+        static constexpr int kCellWidth = 220;
+        static constexpr int kCellHeight = 290;
+        static constexpr int kGridLeftPad = (kDesignWidth - kCols * kCellWidth) / 2;
+        static constexpr int kGridTopPad = kListTopMargin + 12;
+        static constexpr int kIconSize = 160;
+        static constexpr int kIconNameGap = 12;
+        static constexpr int kSelectedBgInset = 6;
+        static constexpr int kCellNamePadding = 10;
+        static constexpr Uint8 kEmptyCellAlpha = 90;
+    };
+
     static const char *kTitleText;
     static const char *kEmptyListHint;
     /** 右下角操作提示（空列表与非空列表正常帧） */
     static const char *kBottomOpsHintDefault;
+    /** Grid 布局右下角操作提示 */
+    static const char *kBottomOpsHintGrid;
     /** startIndex > endIndex 边界分支（与原 menu_ui 一致） */
     static const char *kBottomOpsHintEmptyRange;
 };
