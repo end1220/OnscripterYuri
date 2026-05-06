@@ -33,7 +33,7 @@ struct LauncherTheme {
     static const SDL_Color &iconPlaceholder();
 
     static constexpr int kTitleFontSize = 50;
-    static constexpr int kGameNameFontSize = 36;
+    static constexpr int kGameNameFontSize = 26;
     static constexpr int kListTopMargin = 70;
     static constexpr Uint8 kBgOverlayAlpha = 120;
     static constexpr int kTitleOutlinePx = 2;
@@ -77,6 +77,8 @@ struct LauncherTheme {
         static constexpr int kCellHeight = 290;
         static constexpr int kGridLeftPad = (kDesignWidth - kCols * kCellWidth) / 2;
         static constexpr int kGridTopPad = kListTopMargin + 12;
+        /** Cell 内容（icon + name）整体向下的内边距 */
+        static constexpr int kCellContentTopPad = 20;
         static constexpr int kIconSize = 160;
         static constexpr int kIconNameGap = 12;
         static constexpr int kSelectedBgInset = 6;

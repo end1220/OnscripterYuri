@@ -45,7 +45,7 @@ bool LauncherGridView::render(SDL_Renderer *renderer,
             int cellLeft = gridLeft + col * Grid::kCellWidth;
             int cellTop = gridTop + visibleRow * Grid::kCellHeight;
             int iconX = cellLeft + (Grid::kCellWidth - Grid::kIconSize) / 2;
-            int iconY = cellTop;
+            int iconY = cellTop + Grid::kCellContentTopPad;
             bool isGame = index < count;
             bool isSelected = isGame && index == selected;
 

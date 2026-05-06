@@ -24,6 +24,8 @@ public:
 private:
     bool trySelectUp(int &selected, int count);
     bool trySelectDown(int &selected, int count);
+    bool trySelectGridLeft(int &selected, int count);
+    bool trySelectGridRight(int &selected, int count);
     bool trySelectGridUp(int &selected, int count);
     bool trySelectGridDown(int &selected, int count);
 

@@ -11,11 +11,11 @@ void LauncherMenuInput::handleKey(SDL_Keycode sym, int &selected, int count, boo
             break;
         case SDLK_LEFT:
             if (count > 0)
-                trySelectUp(selected, count);
+                trySelectGridLeft(selected, count);
             break;
         case SDLK_RIGHT:
             if (count > 0)
-                trySelectDown(selected, count);
+                trySelectGridRight(selected, count);
             break;
         case SDLK_UP:
             if (count > 0)
@@ -95,11 +95,11 @@ void LauncherMenuInput::handleControllerButton(Uint8 button, int &selected, int 
             break;
         case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
             if (count > 0)
-                trySelectUp(selected, count);
+                trySelectGridLeft(selected, count);
             break;
         case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
             if (count > 0)
-                trySelectDown(selected, count);
+                trySelectGridRight(selected, count);
             break;
         case SDL_CONTROLLER_BUTTON_DPAD_UP:
             if (count > 0)
@@ -179,6 +179,14 @@ bool LauncherMenuInput::trySelectDown(int &selected, int count) {
     return true;
 }
 
+bool LauncherMenuInput::trySelectGridLeft(int &selected, int count) {
+    return trySelectUp(selected, count);
+}
+
+bool LauncherMenuInput::trySelectGridRight(int &selected, int count) {
+    return trySelectDown(selected, count);
+}
+
 bool LauncherMenuInput::trySelectGridUp(int &selected, int count) {
     if (count <= 0)
         return false;
@@ -237,9 +245,9 @@ void LauncherMenuInput::handleJoyAxisMotion(int axis, Sint16 value, int &selecte
 void LauncherMenuInput::handleJoyHatMotion(Uint8 value, int &selected, int count) {
     if (LauncherTheme::kLayout == LauncherTheme::Layout::kGrid) {
         if (value & SDL_HAT_LEFT)
-            trySelectUp(selected, count);
+            trySelectGridLeft(selected, count);
         else if (value & SDL_HAT_RIGHT)
-            trySelectDown(selected, count);
+            trySelectGridRight(selected, count);
         else if (value & SDL_HAT_UP)
             trySelectGridUp(selected, count);
         else if (value & SDL_HAT_DOWN)
@@ -282,11 +290,17 @@ void LauncherMenuInput::handleControllerAxisLeftY(Sint16 value, int &selected, i
 void LauncherMenuInput::handleControllerAxisLeftX(Sint16 value, int &selected, int count) {
     if (value < -AXIS_DEADZONE) {
         if (leftStickX_ >= -AXIS_DEADZONE)
-            trySelectUp(selected, count);
+            if (LauncherTheme::kLayout == LauncherTheme::Layout::kGrid)
+                trySelectGridLeft(selected, count);
+            else
+                trySelectUp(selected, count);
         leftStickX_ = value;
     } else if (value > AXIS_DEADZONE) {
         if (leftStickX_ <= AXIS_DEADZONE)
-            trySelectDown(selected, count);
+            if (LauncherTheme::kLayout == LauncherTheme::Layout::kGrid)
+                trySelectGridRight(selected, count);
+            else
+                trySelectDown(selected, count);
         leftStickX_ = value;
     } else {
         leftStickX_ = 0;
