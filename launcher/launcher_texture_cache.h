@@ -26,6 +26,9 @@ public:
     TTF_Font *listFont() const { return listFont_; }
 
     SDL_Texture *getIconTexture(const std::string &iconPath);
+    SDL_Texture *getMaskedIconTexture(const std::string &iconPath,
+                                      const std::string &maskPath,
+                                      int size);
     /** 绘制后若修改了纹理 alpha，可调用以恢复，避免污染缓存 */
     static void resetTextureAlpha(SDL_Texture *tex, Uint8 alpha = 255);
 
@@ -45,6 +48,7 @@ private:
     SDL_Renderer *renderer_ = nullptr;
     TTF_Font *listFont_ = nullptr;
     std::unordered_map<std::string, SDL_Texture *> iconCache_;
+    std::unordered_map<std::string, SDL_Texture *> maskedIconCache_;
     std::unordered_map<std::string, TextCacheEntry> textCache_;
 };
 

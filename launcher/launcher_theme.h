@@ -35,7 +35,7 @@ struct LauncherTheme {
     static constexpr int kTitleFontSize = 50;
     static constexpr int kGameNameFontSize = 26;
     static constexpr int kListTopMargin = 70;
-    static constexpr Uint8 kBgOverlayAlpha = 120;
+    static constexpr Uint8 kBgOverlayAlpha = 60;
     static constexpr int kTitleOutlinePx = 2;
     static constexpr int kListBottomMargin = 40;
     static constexpr int kBottomOpsPadding = 20;
@@ -82,6 +82,7 @@ struct LauncherTheme {
         static constexpr int kIconSize = 160;
         static constexpr int kIconNameGap = 12;
         static constexpr int kSelectedBgInset = 6;
+        static constexpr int kSelectedBgRadius = 18;
         static constexpr int kCellNamePadding = 10;
         static constexpr Uint8 kEmptyCellAlpha = 90;
     };
@@ -92,6 +93,10 @@ struct LauncherTheme {
     static const char *kBottomOpsHintDefault;
     /** Grid 布局右下角操作提示 */
     static const char *kBottomOpsHintGrid;
+    /** Grid 选中高亮背景图（pak 逻辑路径需带 data/ 前缀） */
+    static const char *kGridSelectedBgImage;
+    /** Grid 图标圆角遮罩图（pak 逻辑路径需带 data/ 前缀） */
+    static const char *kGridIconMaskImage;
     /** startIndex > endIndex 边界分支（与原 menu_ui 一致） */
     static const char *kBottomOpsHintEmptyRange;
 };

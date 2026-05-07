@@ -797,6 +797,16 @@ void ONScripter::refreshSurface( SDL_Surface *surface, SDL_Rect *clip_src, int r
             text_info.blendOnSurface( surface, 0, 0, clip );
     }
 
+    if (show_dialog_flag)
+        drawTaggedSurface( surface, &dialog_info, clip );
+
+    ButtonLink *bl = root_button_link.next;
+    while( bl ){
+        if (bl->show_flag > 0)
+            drawTaggedSurface( surface, bl->anim[bl->show_flag-1], clip );
+        bl = bl->next;
+    }
+
     if ( refresh_mode & REFRESH_CURSOR_MODE ){
         if (input_mode == INPUT_MODE_POINTER) {
             if (cursor_info[0].image_surface)
@@ -808,16 +818,6 @@ void ONScripter::refreshSurface( SDL_Surface *surface, SDL_Rect *clip_src, int r
             else if ( clickstr_state == CLICK_NEWPAGE )
                 drawTaggedSurface( surface, &cursor_info[1], clip );
         }
-    }
-
-    if (show_dialog_flag)
-        drawTaggedSurface( surface, &dialog_info, clip );
-
-    ButtonLink *bl = root_button_link.next;
-    while( bl ){
-        if (bl->show_flag > 0)
-            drawTaggedSurface( surface, bl->anim[bl->show_flag-1], clip );
-        bl = bl->next;
     }
 }
 

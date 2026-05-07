@@ -26,4 +26,6 @@ const char *LauncherTheme::kTitleText = "ONS游戏";
 const char *LauncherTheme::kEmptyListHint = "Roms/ONS目录里未包含ONS游戏哦~";
 const char *LauncherTheme::kBottomOpsHintDefault = "Ⓜ退出  Ⓐ启动 ";
 const char *LauncherTheme::kBottomOpsHintGrid = "✚导航  Ⓐ启动  Ⓜ退出";
+const char *LauncherTheme::kGridSelectedBgImage = "data/cell_light.png";
+const char *LauncherTheme::kGridIconMaskImage = "data/icon_mask.png";
 const char *LauncherTheme::kBottomOpsHintEmptyRange = "M-退出  A-启动游戏 ";

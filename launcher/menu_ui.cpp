@@ -72,6 +72,8 @@ bool MenuUI::init(const std::string &fontPath, const std::string &launcherDataDi
         return false;
     }
 
+    // 使用线性过滤缩放纹理，减轻圆角遮罩边缘锯齿。
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
     renderer_ = SDL_CreateRenderer(window_, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!renderer_) {
         std::fprintf(stderr, "SDL_CreateRenderer failed: %s\n", SDL_GetError());

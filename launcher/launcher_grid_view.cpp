@@ -2,7 +2,48 @@
 #include "launcher_texture_cache.h"
 
 #include <algorithm>
+#include <cmath>
 #include <string>
+
+static void fillRoundedRect(SDL_Renderer *renderer, const SDL_Rect &rect, int radius) {
+    if (radius <= 0 || rect.w <= 0 || rect.h <= 0) {
+        SDL_RenderFillRect(renderer, &rect);
+        return;
+    }
+
+    const int w = rect.w;
+    const int h = rect.h;
+    int r = radius;
+    r = std::min(r, w / 2);
+    r = std::min(r, h / 2);
+    if (r <= 0) {
+        SDL_RenderFillRect(renderer, &rect);
+        return;
+    }
+
+    // 扫描线填充：每一行计算左右边界（圆角由四分之一圆决定）。
+    for (int yy = 0; yy < h; ++yy) {
+        int xLeft = rect.x;
+        int xRight = rect.x + w - 1;
+
+        if (yy < r) {
+            // 距离左上角圆弧底边的垂直距离（yy=r-1 时为 0）
+            const int dy = (r - 1 - yy);
+            const int dx = static_cast<int>(std::floor(std::sqrt(static_cast<double>(r * r - dy * dy))));
+            xLeft = rect.x + (r - dx);
+            xRight = rect.x + w - 1 - (r - dx);
+        } else if (yy >= h - r) {
+            const int dy = (yy - (h - r));
+            const int dx = static_cast<int>(std::floor(std::sqrt(static_cast<double>(r * r - dy * dy))));
+            xLeft = std::max(xLeft, rect.x + (r - dx));
+            xRight = std::min(xRight, rect.x + w - 1 - (r - dx));
+        }
+
+        if (xRight >= xLeft) {
+            SDL_RenderDrawLine(renderer, xLeft, rect.y + yy, xRight, rect.y + yy);
+        }
+    }
+}
 
 bool LauncherGridView::render(SDL_Renderer *renderer,
                               LauncherTextureCache &cache,
@@ -56,11 +97,19 @@ bool LauncherGridView::render(SDL_Renderer *renderer,
                                    cellTop - Grid::kSelectedBgInset,
                                    Grid::kCellWidth - 2 * Grid::kSelectedBgInset,
                                    Grid::kCellHeight - 2 * Grid::kSelectedBgInset};
-                SDL_RenderFillRect(renderer, &cellBg);
+                SDL_Texture *cellLightTex =
+                    cache.getIconTexture(LauncherTheme::kGridSelectedBgImage);
+                if (cellLightTex) {
+                    SDL_RenderCopy(renderer, cellLightTex, nullptr, &cellBg);
+                } else {
+                    fillRoundedRect(renderer, cellBg, Grid::kSelectedBgRadius);
+                }
             }
 
             if (isGame) {
-                SDL_Texture *iconTex = cache.getIconTexture(games[index].iconPath);
+                SDL_Texture *iconTex = cache.getMaskedIconTexture(games[index].iconPath,
+                                                                  LauncherTheme::kGridIconMaskImage,
+                                                                  Grid::kIconSize);
                 SDL_Rect iconDst = {iconX, iconY, Grid::kIconSize, Grid::kIconSize};
                 if (iconTex) {
                     SDL_RenderCopy(renderer, iconTex, nullptr, &iconDst);
