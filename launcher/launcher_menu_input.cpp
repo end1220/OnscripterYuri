@@ -195,12 +195,18 @@ bool LauncherMenuInput::trySelectGridUp(int &selected, int count) {
         return false;
 
     const int cols = LauncherTheme::Grid::kCols;
-    int next = selected - cols;
-    if (next < 0) {
-        int col = selected % cols;
-        next = ((count - 1) / cols) * cols + col;
-        if (next >= count)
-            next -= cols;
+    const int rowCount = (count + cols - 1) / cols;
+    const int col = selected % cols;
+    int targetRow = (selected / cols) - 1;
+    if (targetRow < 0)
+        targetRow = rowCount - 1;
+
+    int next = targetRow * cols + col;
+    if (next >= count) {
+        const int rowStart = targetRow * cols;
+        next = count - 1;
+        if (rowStart < count)
+            next = rowStart + (count - rowStart) - 1;
     }
     if (next >= 0 && next < count)
         selected = next;
@@ -217,9 +223,19 @@ bool LauncherMenuInput::trySelectGridDown(int &selected, int count) {
         return false;
 
     const int cols = LauncherTheme::Grid::kCols;
-    int next = selected + cols;
-    if (next >= count)
-        next = selected % cols;
+    const int rowCount = (count + cols - 1) / cols;
+    const int col = selected % cols;
+    int targetRow = (selected / cols) + 1;
+    if (targetRow >= rowCount)
+        targetRow = 0;
+
+    int next = targetRow * cols + col;
+    if (next >= count) {
+        const int rowStart = targetRow * cols;
+        next = count - 1;
+        if (rowStart < count)
+            next = rowStart + (count - rowStart) - 1;
+    }
     if (next >= 0 && next < count)
         selected = next;
 
