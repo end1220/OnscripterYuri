@@ -31,6 +31,12 @@ struct LauncherTheme {
     static const SDL_Color &emptyHint();
     static const SDL_Color &hintOps();
     static const SDL_Color &iconPlaceholder();
+    static const SDL_Color &settingsBackdrop();
+    static const SDL_Color &settingsPanel();
+    static const SDL_Color &settingsPanelBorder();
+    static const SDL_Color &settingsButton();
+    static const SDL_Color &settingsButtonFocused();
+    static const SDL_Color &settingsText();
 
     static constexpr int kTitleFontSize = 50;
     static constexpr int kGameNameFontSize = 26;
@@ -39,6 +45,13 @@ struct LauncherTheme {
     static constexpr int kTitleOutlinePx = 2;
     static constexpr int kListBottomMargin = 40;
     static constexpr int kBottomOpsPadding = 20;
+    static constexpr int kSettingsPanelSize = 420;
+    static constexpr float kSettingsPanelSizeRatio = 0.75f;
+    static constexpr int kSettingsPanelBorderPx = 2;
+    static constexpr int kSettingsButtonWidth = 220;
+    static constexpr int kSettingsButtonHeight = 64;
+    static constexpr int kSettingsButtonTopOffset = 146;
+    static constexpr int kSettingsSignatureBottomOffset = 64;
 
     /** 纵向游戏列表行布局（与 menu_ui 原 static 常量一致） */
     struct List {
@@ -93,6 +106,17 @@ struct LauncherTheme {
     static const char *kBottomOpsHintDefault;
     /** Grid 布局右下角操作提示 */
     static const char *kBottomOpsHintGrid;
+    static const char *kSettingsExitText;
+    static const char *kSettingsReturnText;
+    static const char *kSettingsAuthorTabText;
+    static const char *kSettingsAboutTabText;
+    static const char *kSettingsAuthorNameText;
+    static const char *kSettingsAuthorLinkText;
+    static const char *kSettingsAboutLine1Text;
+    static const char *kSettingsAboutLine2Text;
+    static const char *kSettingsAboutLine3Text;
+    static const char *kSettingsAboutLine4Text;
+    static const char *kSettingsSignatureText;
     /** Grid 选中高亮背景图（pak 逻辑路径需带 data/ 前缀） */
     static const char *kGridSelectedBgImage;
     /** Grid 图标圆角遮罩图（pak 逻辑路径需带 data/ 前缀） */

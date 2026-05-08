@@ -2,7 +2,12 @@
 #include "launcher_theme.h"
 
 void LauncherMenuInput::handleKey(SDL_Keycode sym, int &selected, int count, bool &confirm,
-                                  bool &quit) {
+                                  bool &quit, LauncherSceneTarget &switchTo) {
+    if (sym == SDLK_m) {
+        switchTo = LauncherSceneTarget::kSettings;
+        return;
+    }
+
     if (LauncherTheme::kLayout == LauncherTheme::Layout::kGrid) {
         switch (sym) {
         case SDLK_ESCAPE:

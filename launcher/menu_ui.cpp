@@ -196,96 +196,31 @@ void MenuUI::shutdown() {
     SDL_Quit();
 }
 
-void MenuUI::render(const std::vector<GameEntry> &games, int selected) {
-    int windowW = LauncherTheme::kDesignWidth;
-    int windowH = LauncherTheme::kDesignHeight;
-    SDL_RenderGetLogicalSize(renderer_, &windowW, &windowH);
-    if (windowW <= 0 || windowH <= 0) {
-        windowW = LauncherTheme::kDesignWidth;
-        windowH = LauncherTheme::kDesignHeight;
-    }
-
-    chrome_.clearBackground(renderer_, windowW, windowH);
-    chrome_.drawBackgroundOverlay(textureCache_, renderer_, windowW, windowH);
-    chrome_.drawTitle(titleFont_, renderer_, windowW);
-
-    const int listTop = LauncherTheme::kListTopMargin;
-    const int listBottomMargin = LauncherTheme::kListBottomMargin;
-    int listHeight = windowH - listTop - listBottomMargin;
-    if (listHeight < 0)
-        listHeight = 0;
-    SDL_Rect listClip = {0, listTop, windowW, listHeight};
-    SDL_RenderSetClipRect(renderer_, &listClip);
-
-    const char *bottomHint = (LauncherTheme::kLayout == LauncherTheme::Layout::kGrid)
-                                 ? LauncherTheme::kBottomOpsHintGrid
-                                 : LauncherTheme::kBottomOpsHintDefault;
-
-    if (games.empty()) {
-        chrome_.drawEmptyListHint(font_, renderer_, windowW, windowH);
-        SDL_RenderSetClipRect(renderer_, nullptr);
-        chrome_.drawBottomOpsHint(font_, renderer_, windowW, windowH, bottomHint);
-        SDL_RenderPresent(renderer_);
-        return;
-    }
-
-    bool drewList = false;
-    switch (LauncherTheme::kLayout) {
-    case LauncherTheme::Layout::kGrid:
-        drewList = gridView_.render(renderer_, textureCache_, games, selected, windowW, windowH,
-                                    listClip);
-        break;
-    case LauncherTheme::Layout::kSwitchRow:
-        drewList = switchRowView_.render(renderer_, textureCache_, games, selected, windowW, windowH,
-                                         listClip);
-        break;
-    case LauncherTheme::Layout::kVertical:
-    default:
-        drewList = listView_.render(renderer_, textureCache_, games, selected, windowW, windowH,
-                                      listClip);
-        break;
-    }
-    SDL_RenderSetClipRect(renderer_, nullptr);
-
-    if (!drewList) {
-        chrome_.drawBottomOpsHint(font_, renderer_, windowW, windowH,
-                                  LauncherTheme::kBottomOpsHintEmptyRange);
-        SDL_RenderPresent(renderer_);
-        return;
-    }
-
-    chrome_.drawBottomOpsHint(font_, renderer_, windowW, windowH, bottomHint);
-    SDL_RenderPresent(renderer_);
-}
-
 int MenuUI::run(const std::vector<GameEntry> &games) {
     if (!window_ || !renderer_ || !font_)
         return -1;
 
     int selected = 0;
     int count = static_cast<int>(games.size());
-    menuInput_.resetStickState();
-
-    static constexpr Uint8 BTN_B = 0;
-    static constexpr Uint8 BTN_A = 1;
-    static constexpr Uint8 BTN_MENU = 10;
+    mainScene_.reset(new MainScene());
+    settingsScene_.reset(new SettingsScene(*mainScene_));
+    sceneManager_.reset(new SceneManager(*mainScene_, *settingsScene_));
 
     while (true) {
-        bool confirm = false;
-        bool quit = false;
+        LauncherSceneAction action;
 
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) {
-                quit = true;
+                action.quit = true;
                 break;
             }
             if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
-                quit = true;
+                action.quit = true;
                 break;
             }
             if (e.type == SDL_APP_WILLENTERBACKGROUND) {
-                quit = true;
+                action.quit = true;
                 break;
             }
             if (e.type == SDL_JOYDEVICEADDED) {
@@ -296,40 +231,30 @@ int MenuUI::run(const std::vector<GameEntry> &games) {
                 handleDeviceAdded(static_cast<int>(e.cdevice.which));
             } else if (e.type == SDL_CONTROLLERDEVICEREMOVED) {
                 handleDeviceRemoved(static_cast<Sint32>(e.cdevice.which));
-            } else if (e.type == SDL_CONTROLLERBUTTONDOWN) {
-                if (e.cbutton.button == BTN_MENU) {
-                    quit = true;
-                    break;
-                }
-                if (!quit)
-                    menuInput_.handleControllerButton(e.cbutton.button, selected, count, confirm,
-                                                      quit);
-            } else if (e.type == SDL_KEYDOWN) {
-                menuInput_.handleKey(e.key.keysym.sym, selected, count, confirm, quit);
-            } else if (e.type == SDL_CONTROLLERAXISMOTION) {
-                menuInput_.handleControllerAxisMotion(e.caxis.axis, e.caxis.value, selected, count);
-            } else if (e.type == SDL_JOYAXISMOTION) {
-                Sint16 v = static_cast<Sint16>(e.jaxis.value);
-                menuInput_.handleJoyAxisMotion(e.jaxis.axis, v, selected, count);
-            } else if (e.type == SDL_JOYHATMOTION) {
-                menuInput_.handleJoyHatMotion(e.jhat.value, selected, count);
-            } else if (e.type == SDL_JOYBUTTONDOWN) {
-                int btn = e.jbutton.button;
-                if (btn == BTN_MENU)
-                    quit = true;
-                else if (btn == BTN_A || btn == BTN_B) {
-                    if (count > 0)
-                        confirm = true;
-                }
+            } else {
+                LauncherSceneInputContext inputCtx = {games, selected, count, action};
+                sceneManager_->currentScene().handleEvent(e, inputCtx);
             }
         }
 
-        if (quit)
+        if (action.switchTo == LauncherSceneTarget::kSettings) {
+            LauncherSceneRenderContext captureCtx(renderer_, font_, titleFont_, textureCache_, games,
+                                                  selected);
+            settingsScene_->captureBlurredBackground(captureCtx);
+        }
+
+        if (action.switchTo != LauncherSceneTarget::kNone)
+            sceneManager_->switchTo(action.switchTo);
+
+        if (action.quit)
             return -1;
-        if (confirm)
+        if (action.confirm)
             return selected;
 
-        render(games, selected);
+        LauncherSceneRenderContext renderCtx(renderer_, font_, titleFont_, textureCache_, games,
+                                             selected);
+        sceneManager_->currentScene().draw(renderCtx);
+        SDL_RenderPresent(renderer_);
         SDL_Delay(50);
     }
 }

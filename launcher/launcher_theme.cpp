@@ -10,6 +10,12 @@ static const SDL_Color kTitleStroke = {0, 90, 120, 255};
 static const SDL_Color kEmptyHint = {170, 190, 200, 255};
 static const SDL_Color kHintOps = {185, 205, 215, 255};
 static const SDL_Color kIconPlaceholder = {200, 230, 235, 255};
+static const SDL_Color kSettingsBackdrop = {0, 0, 0, 60};
+static const SDL_Color kSettingsPanel = {0, 0, 0, 150};
+static const SDL_Color kSettingsPanelBorder = {210, 235, 240, 185};
+static const SDL_Color kSettingsButton = {40, 78, 90, 205};
+static const SDL_Color kSettingsButtonFocused = {66, 225, 205, 230};
+static const SDL_Color kSettingsText = {245, 250, 250, 255};
 
 const SDL_Color &LauncherTheme::bg() { return kBg; }
 const SDL_Color &LauncherTheme::gameName() { return kGameName; }
@@ -21,11 +27,28 @@ const SDL_Color &LauncherTheme::titleStroke() { return kTitleStroke; }
 const SDL_Color &LauncherTheme::emptyHint() { return kEmptyHint; }
 const SDL_Color &LauncherTheme::hintOps() { return kHintOps; }
 const SDL_Color &LauncherTheme::iconPlaceholder() { return kIconPlaceholder; }
+const SDL_Color &LauncherTheme::settingsBackdrop() { return kSettingsBackdrop; }
+const SDL_Color &LauncherTheme::settingsPanel() { return kSettingsPanel; }
+const SDL_Color &LauncherTheme::settingsPanelBorder() { return kSettingsPanelBorder; }
+const SDL_Color &LauncherTheme::settingsButton() { return kSettingsButton; }
+const SDL_Color &LauncherTheme::settingsButtonFocused() { return kSettingsButtonFocused; }
+const SDL_Color &LauncherTheme::settingsText() { return kSettingsText; }
 
 const char *LauncherTheme::kTitleText = "ONS游戏";
 const char *LauncherTheme::kEmptyListHint = "Roms/ONS目录里未包含ONS游戏哦~";
-const char *LauncherTheme::kBottomOpsHintDefault = "Ⓜ退出  Ⓐ启动 ";
-const char *LauncherTheme::kBottomOpsHintGrid = "✚导航  Ⓐ启动  Ⓜ退出";
+const char *LauncherTheme::kBottomOpsHintDefault = "Ⓜ菜单  Ⓐ启动 ";
+const char *LauncherTheme::kBottomOpsHintGrid = "✚导航  Ⓐ启动  Ⓜ菜单";
+const char *LauncherTheme::kSettingsExitText = "退 出";
+const char *LauncherTheme::kSettingsReturnText = "返 回";
+const char *LauncherTheme::kSettingsAuthorTabText = "作 者";
+const char *LauncherTheme::kSettingsAboutTabText = "关 于";
+const char *LauncherTheme::kSettingsAuthorNameText = "洛克摸摸鱼";
+const char *LauncherTheme::kSettingsAuthorLinkText = "哔哩哔哩 https://b23.tv/3HaIROb";
+const char *LauncherTheme::kSettingsAboutLine1Text = "Miniloong Pocket1掌机专用";
+const char *LauncherTheme::kSettingsAboutLine2Text = "Onscripter游戏启动器";
+const char *LauncherTheme::kSettingsAboutLine3Text = "https://github.com/YuriSizuku/OnscripterYuri";
+const char *LauncherTheme::kSettingsAboutLine4Text = "Launcher UI powered by SDL2";
+const char *LauncherTheme::kSettingsSignatureText = "菜 单";
 const char *LauncherTheme::kGridSelectedBgImage = "data/cell_light.png";
 const char *LauncherTheme::kGridIconMaskImage = "data/icon_mask.png";
-const char *LauncherTheme::kBottomOpsHintEmptyRange = "M-退出  A-启动游戏 ";
+const char *LauncherTheme::kBottomOpsHintEmptyRange = "M-设置  A-启动游戏 ";

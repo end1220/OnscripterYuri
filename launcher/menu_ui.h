@@ -2,15 +2,14 @@
 #define LAUNCHER_MENU_UI_H
 
 #include "game_list.h"
-#include "launcher_chrome.h"
-#include "launcher_game_list_view_vertical.h"
-#include "launcher_grid_view.h"
-#include "launcher_switch_game_row_view.h"
-#include "launcher_menu_input.h"
 #include "launcher_texture_cache.h"
+#include "scene_manager.h"
+#include "scenes/main_scene.h"
+#include "scenes/settings_scene.h"
 
 #include <SDL.h>
 #include <SDL_ttf.h>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -33,7 +32,6 @@ private:
     void closeDevice();
     void handleDeviceAdded(int index);
     void handleDeviceRemoved(Sint32 instanceId);
-    void render(const std::vector<GameEntry> &games, int selected);
 
     SDL_Window *window_ = nullptr;
     SDL_Renderer *renderer_ = nullptr;
@@ -44,11 +42,9 @@ private:
     std::string fontPath_;
 
     LauncherTextureCache textureCache_;
-    VerticalGameListView listView_;
-    LauncherGridView gridView_;
-    SwitchGameRowView switchRowView_;
-    LauncherChrome chrome_;
-    LauncherMenuInput menuInput_;
+    std::unique_ptr<MainScene> mainScene_;
+    std::unique_ptr<SettingsScene> settingsScene_;
+    std::unique_ptr<SceneManager> sceneManager_;
 };
 
 #endif

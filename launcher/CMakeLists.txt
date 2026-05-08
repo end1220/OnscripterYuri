@@ -5,6 +5,7 @@ add_executable(onsyuri_launcher
     game_list.cpp
     options.cpp
     menu_ui.cpp
+    scene_manager.cpp
     launcher_theme.cpp
     launcher_texture_cache.cpp
     launcher_game_list_view_vertical.cpp
@@ -14,6 +15,8 @@ add_executable(onsyuri_launcher
     launcher_menu_input.cpp
     resource_pak.cpp
     resource_loader.cpp
+    scenes/main_scene.cpp
+    scenes/settings_scene.cpp
 )
 
 set_target_properties(onsyuri_launcher PROPERTIES OUTPUT_NAME "ons_launcher")

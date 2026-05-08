@@ -1,6 +1,8 @@
 #ifndef LAUNCHER_MENU_INPUT_H
 #define LAUNCHER_MENU_INPUT_H
 
+#include "scenes/i_scene.h"
+
 #include <SDL.h>
 
 /**
@@ -14,7 +16,8 @@ public:
         leftStickX_ = 0;
     }
 
-    void handleKey(SDL_Keycode sym, int &selected, int count, bool &confirm, bool &quit);
+    void handleKey(SDL_Keycode sym, int &selected, int count, bool &confirm, bool &quit,
+                   LauncherSceneTarget &switchTo);
     void handleControllerButton(Uint8 button, int &selected, int count, bool &confirm, bool &quit);
     /** LEFTY 或 LEFTX，内部按当前布局模式处理 */
     void handleControllerAxisMotion(int axis, Sint16 value, int &selected, int count);
