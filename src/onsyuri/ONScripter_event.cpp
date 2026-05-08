@@ -868,9 +868,6 @@ bool ONScripter::keyPressEvent( SDL_KeyboardEvent *event )
            ((!getenter_flag && event->keysym.sym == SDLK_RETURN) ||
             (!getenter_flag && event->keysym.sym == SDLK_KP_ENTER))) ||
           ((spclclk_flag || !useescspc_flag) && event->keysym.sym == SDLK_SPACE)) ){
-        utils::printInfo("WAIT_BUTTON select: type=%d sym=%d current_over=%d line=%d bexec=%d\n",
-                         (int)event->type, (int)event->keysym.sym,
-                         current_over_button, shortcut_mouse_line, bexec_flag ? 1 : 0);
         if ( event->keysym.sym == SDLK_RETURN ||
              event->keysym.sym == SDLK_KP_ENTER ||
              (spclclk_flag && event->keysym.sym == SDLK_SPACE) ){
@@ -1189,7 +1186,6 @@ void ONScripter::runEventLoop()
     static Uint8 polled_button_state[64] = {0};
     static int polled_button_count = -1;
     bool use_polled_joystick_buttons = true;
-    bool logged_axis_ignored_by_hat = false;
     static Sint16 controller_left_x = 0;
     static Sint16 controller_left_y = 0;
     static Sint16 joystick_left_x = 0;
@@ -1364,7 +1360,6 @@ void ONScripter::runEventLoop()
             Uint8 now = SDL_JoystickGetButton(joystick, i);
             if (now == polled_button_state[i]) continue;
             ONS_Key mapped = transJoystickButton((Uint8)i);
-            utils::printInfo("JOYBUTTON POLL: idx=%d state=%d mapped=%d\n", i, (int)now, (int)mapped);
             if (input_mode == INPUT_MODE_POINTER) markPointerInteraction();
             if (input_mode == INPUT_MODE_POINTER && i == 1) {
                 if (pointerLeftClick(now != 0, SDL_GetTicks())) handled = true;
@@ -1540,18 +1535,12 @@ void ONScripter::runEventLoop()
                 event.key.type = SDL_KEYDOWN;
                 event.key.keysym.sym = transJoystickButton(event.jbutton.button);
                 event.key.keysym.mod = 0;
-                utils::printInfo("JOYBUTTONDOWN: which=%d button=%d mapped=%d\n",
-                                 (int)event.jbutton.which, (int)event.jbutton.button, (int)event.key.keysym.sym);
                 if (event.key.keysym.sym != SDLK_UNKNOWN) {
                     event.key.keysym.sym = transKey(event.key.keysym.sym);
                     ret = keyDownEvent(&event.key);
                     if (btndown_flag) ret |= keyPressEvent(&event.key);
                     if (ret) return;
                 }
-            } else {
-                utils::printInfo("JOYBUTTONDOWN ignored: which=%d joy=%d\n",
-                                 (int)event.jbutton.which,
-                                 joystick != NULL ? (int)SDL_JoystickInstanceID(joystick) : -1);
             }
             break;
           case SDL_JOYBUTTONUP:
@@ -1567,8 +1556,6 @@ void ONScripter::runEventLoop()
                 event.key.type = SDL_KEYUP;
                 event.key.keysym.sym = transJoystickButton(event.jbutton.button);
                 event.key.keysym.mod = 0;
-                utils::printInfo("JOYBUTTONUP: which=%d button=%d mapped=%d\n",
-                                 (int)event.jbutton.which, (int)event.jbutton.button, (int)event.key.keysym.sym);
                 if (event.key.keysym.sym != SDLK_UNKNOWN) {
                     event.key.keysym.sym = transKey(event.key.keysym.sym);
                     keyUpEvent(&event.key);
@@ -1581,8 +1568,6 @@ void ONScripter::runEventLoop()
             if (joystick != NULL && event.jhat.which == SDL_JoystickInstanceID(joystick) && event.jhat.hat == 0) {
                 static Uint8 prev_hat = 0;
                 Uint8 hat = event.jhat.value;
-                utils::printInfo("JOYHATMOTION: which=%d hat=%d value=0x%x prev=0x%x\n",
-                                 (int)event.jhat.which, (int)event.jhat.hat, (unsigned int)hat, (unsigned int)prev_hat);
                 auto dpadKey = [&](Uint8 mask, ONS_Key k) {
                     if ((hat & mask) != (prev_hat & mask)) {
                         if (input_mode == INPUT_MODE_POINTER && (hat & mask) &&
@@ -1621,17 +1606,11 @@ void ONScripter::runEventLoop()
             if (input_mode == INPUT_MODE_POINTER) break;
 
             if (SDL_JoystickNumHats(joystick) > 0) {
-                if (!logged_axis_ignored_by_hat) {
-                    utils::printInfo("JOYAXISMOTION ignored: device has HAT, use HAT for dpad\n");
-                    logged_axis_ignored_by_hat = true;
-                }
                 break;
             }
 #define ONS_JOY_AXIS_DEADZONE (32767 * 20 / 100)  /* 20% 死区 */
             static Sint16 joy_axis0 = 0, joy_axis1 = 0;
             static bool axis_left = false, axis_right = false, axis_up = false, axis_down = false;
-            utils::printInfo("JOYAXISMOTION: which=%d axis=%d value=%d\n",
-                             (int)event.jaxis.which, (int)event.jaxis.axis, (int)event.jaxis.value);
             if (event.jaxis.axis == 0) joy_axis0 = event.jaxis.value;
             else if (event.jaxis.axis == 1) joy_axis1 = event.jaxis.value;
             bool new_left = (joy_axis0 < -ONS_JOY_AXIS_DEADZONE);
@@ -1666,32 +1645,19 @@ void ONScripter::runEventLoop()
           }
           case SDL_JOYDEVICEADDED:
             /* 掌机常见：启动时 NumJoysticks()==0，稍后才触发 JOYDEVICEADDED */
-            utils::printInfo("JOYDEVICEADDED: which(index)=%d num=%d\n", event.jdevice.which, SDL_NumJoysticks());
             use_polled_joystick_buttons = true;
-            logged_axis_ignored_by_hat = false;
             if (controller == NULL && joystick == NULL) {
                 joystick = SDL_JoystickOpen(event.jdevice.which);
-                if (joystick != NULL) {
-                    const char *name = SDL_JoystickName(joystick);
-                    utils::printInfo("Joystick added (index %d): %s, axes=%d buttons=%d hats=%d\n",
-                                     event.jdevice.which, name ? name : "unknown",
-                                     SDL_JoystickNumAxes(joystick),
-                                     SDL_JoystickNumButtons(joystick),
-                                     SDL_JoystickNumHats(joystick));
-                }
             }
             break;
           case SDL_JOYDEVICEREMOVED:
             if (joystick != NULL && event.jdevice.which == (SDL_JoystickID)SDL_JoystickInstanceID(joystick)) {
                 SDL_JoystickClose(joystick);
                 joystick = NULL;
-                utils::printInfo("Joystick removed\n");
             }
             use_polled_joystick_buttons = true;
-            logged_axis_ignored_by_hat = false;
             break;
           case SDL_CONTROLLERDEVICEADDED:
-            utils::printInfo("Open GameController %d\n", event.cdevice.which);
             if (joystick != NULL) {
                 SDL_JoystickClose(joystick);
                 joystick = NULL;
@@ -1706,7 +1672,6 @@ void ONScripter::runEventLoop()
             break;
 
           case SDL_CONTROLLERDEVICEREMOVED:
-            utils::printInfo("Close GameController %d\n", event.cdevice.which);
             if (controller != NULL) {
                 SDL_GameControllerClose(controller);
                 controller = NULL;
