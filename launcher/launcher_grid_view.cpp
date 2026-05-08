@@ -145,11 +145,6 @@ bool LauncherGridView::render(SDL_Renderer *renderer,
                     SDL_Rect nameDst = {textX, textY, drawW, drawH};
                     SDL_RenderCopy(renderer, nameTex, nullptr, &nameDst);
                 }
-            } else {
-                SDL_Color ph = LauncherTheme::iconPlaceholder();
-                SDL_SetRenderDrawColor(renderer, ph.r, ph.g, ph.b, Grid::kEmptyCellAlpha);
-                SDL_Rect placeholder = {iconX, iconY, Grid::kIconSize, Grid::kIconSize};
-                SDL_RenderFillRect(renderer, &placeholder);
             }
         }
     }

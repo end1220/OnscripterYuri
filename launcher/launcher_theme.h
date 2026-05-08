@@ -35,7 +35,7 @@ struct LauncherTheme {
     static constexpr int kTitleFontSize = 50;
     static constexpr int kGameNameFontSize = 26;
     static constexpr int kListTopMargin = 70;
-    static constexpr Uint8 kBgOverlayAlpha = 60;
+    static constexpr Uint8 kBgOverlayAlpha = 100;
     static constexpr int kTitleOutlinePx = 2;
     static constexpr int kListBottomMargin = 40;
     static constexpr int kBottomOpsPadding = 20;
