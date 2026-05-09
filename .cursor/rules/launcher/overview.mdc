@@ -56,6 +56,17 @@ launcher/
 
 Launcher 作为独立程序运行在 `onsyuri` 之前，用户通过它选择要运行的游戏，然后启动 `onsyuri` 加载选中的游戏资源。
 
-## 输入说明
+## 输入说明（2026-05 最新）
 
-键盘与手柄在 `menu_ui.cpp` 中处理；与主引擎的全局按键映射不完全相同。详见 `.cursor/rules/input/player-input.mdc`。
+`menu_ui.cpp` 只负责事件泵与场景分发，具体输入语义在场景层：
+
+- 主界面：`launcher/scenes/main_scene.cpp` + `launcher/launcher_menu_input.cpp`
+- 设置页：`launcher/scenes/settings_scene.cpp`
+
+主界面默认语义（含三种布局）：
+
+- 键盘：`Enter/Space` 确认，方向键移动，`m` 进设置，`Esc/q` 退出
+- GameController：`B` 确认，`A` 在主界面中被显式忽略，`Menu(10)` 进设置
+- Joystick：`btn==0(BTN_B)` 确认，`btn==10(BTN_MENU)` 进设置
+
+注意：SDL 在部分掌机上会同时上报 `SDL_CONTROLLERBUTTONDOWN` 和 `SDL_JOYBUTTONDOWN`。如果不按设备实例做过滤，可能出现“物理 A 也触发确认”的现象（实测根因见 `.cursor/rules/input/player-input.mdc` 的 Launcher 小节）。

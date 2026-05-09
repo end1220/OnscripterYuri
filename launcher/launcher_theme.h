@@ -52,6 +52,13 @@ struct LauncherTheme {
     static constexpr int kSettingsButtonHeight = 64;
     static constexpr int kSettingsButtonTopOffset = 146;
     static constexpr int kSettingsSignatureBottomOffset = 64;
+    /**
+     * 设置页顶栏「菜单」与左侧按钮相对 listFont 的缩放。
+     * 与修改前相比：顶栏与左侧按钮默认字号数值已对调（原顶栏 1.0 ↔ 原按钮未选中 1.1）。
+     */
+    static constexpr float kSettingsSignatureTextScale = 1.1f;
+    static constexpr float kSettingsLeftButtonScaleNormal = 1.0f;
+    static constexpr float kSettingsLeftButtonScaleSelected = 1.2f;
 
     /** 纵向游戏列表行布局（与 menu_ui 原 static 常量一致） */
     struct List {
@@ -112,10 +119,16 @@ struct LauncherTheme {
     static const char *kSettingsAboutTabText;
     static const char *kSettingsAuthorNameText;
     static const char *kSettingsAuthorLinkText;
-    static const char *kSettingsAboutLine1Text;
-    static const char *kSettingsAboutLine2Text;
-    static const char *kSettingsAboutLine3Text;
-    static const char *kSettingsAboutLine4Text;
+    /** 设置页右侧默认说明（返 回 / 关 于 / 退 出 等与「作者」并列项共用；「作者」为简介） */
+    static const char *kSettingsHelpTitleText;
+    static const char *kSettingsHelpLine1Text;
+    static const char *kSettingsHelpLine3Text;
+    /** kSettingsHelpLine3Text 续行（避免单行过长超出右侧面板） */
+    static const char *kSettingsHelpLine3PointerText;
+    static const char *kSettingsHelpLine5Text;
+    /** 选中「关 于」时右侧说明区最上方一行 */
+    static const char *kSettingsAboutDeviceBannerText;
+    static const char *kSettingsHelpLine6Text;
     static const char *kSettingsSignatureText;
     /** Grid 选中高亮背景图（pak 逻辑路径需带 data/ 前缀） */
     static const char *kGridSelectedBgImage;

@@ -274,22 +274,13 @@ void SettingsScene::draw(const LauncherSceneRenderContext &ctx) {
 
     if (focusedButton_ == 1) {
         drawAuthorProfile(ctx, panel);
-    } else if (focusedButton_ == 2) {
-        int areaLeft = panel.x + panel.w / 2 - 116;
-        int areaTop = panel.y + panel.h / 6;
-        drawTextAt(ctx, "settings_about_line1", LauncherTheme::kSettingsAboutLine1Text,
-                   LauncherTheme::settingsText(), areaLeft, areaTop, 0.95f, 1);
-        drawTextAt(ctx, "settings_about_line2", LauncherTheme::kSettingsAboutLine2Text,
-                   LauncherTheme::settingsText(), areaLeft, areaTop + 36, 0.85f, 0);
-        drawTextAt(ctx, "settings_about_line3", LauncherTheme::kSettingsAboutLine3Text,
-                   LauncherTheme::settingsText(), areaLeft, areaTop + 68, 0.85f, 0);
-        drawTextAt(ctx, "settings_about_line4", LauncherTheme::kSettingsAboutLine4Text,
-                   LauncherTheme::settingsText(), areaLeft, areaTop + 100, 0.85f, 0);
+    } else {
+        drawSimulatorHelpPanel(ctx, panel);
     }
 
     drawText(ctx, "settings_signature", LauncherTheme::kSettingsSignatureText,
              LauncherTheme::gameNameSelected(), panel.x + panel.w / 2,
-             panel.y + 14, 1.0f, 0);
+             panel.y + 14, LauncherTheme::kSettingsSignatureTextScale, 0);
 }
 
 void SettingsScene::captureBlurredBackground(const LauncherSceneRenderContext &ctx) {
@@ -368,7 +359,8 @@ void SettingsScene::drawPanel(const LauncherSceneRenderContext &ctx, const SDL_R
 
 void SettingsScene::drawButtonText(const LauncherSceneRenderContext &ctx, const char *cachePrefix,
                                    const char *text, bool selected, int centerX, int y) {
-    const float scale = selected ? 1.2f : 1.1f;
+    const float scale = selected ? LauncherTheme::kSettingsLeftButtonScaleSelected
+                                 : LauncherTheme::kSettingsLeftButtonScaleNormal;
     const SDL_Color color = selected ? LauncherTheme::gameNameSelected() : LauncherTheme::settingsText();
     const char *state = selected ? "selected" : "normal";
     std::string textKey = std::string(cachePrefix) + "_" + state;
@@ -419,6 +411,39 @@ void SettingsScene::drawAuthorProfile(const LauncherSceneRenderContext &ctx, con
                LauncherTheme::settingsText(), areaLeft, textStartY, 1.0f, 1);
     drawTextAt(ctx, "settings_author_link", LauncherTheme::kSettingsAuthorLinkText,
                LauncherTheme::settingsText(), areaLeft, textStartY + 34, 0.75f, 0);
+}
+
+void SettingsScene::drawSimulatorHelpPanel(const LauncherSceneRenderContext &ctx,
+                                           const SDL_Rect &panel) {
+    const int areaLeft = panel.x + panel.w / 2 - 116;
+    const int areaTop = panel.y + panel.h / 6;
+    const SDL_Color &color = LauncherTheme::settingsText();
+
+    static constexpr int kLineStep = 28;
+    int y = areaTop;
+    if (focusedButton_ == 2) {
+        drawTextAt(ctx, "settings_about_device_banner", LauncherTheme::kSettingsAboutDeviceBannerText,
+                   LauncherTheme::gameNameSelected(), areaLeft, y, 0.88f, 1);
+        y += kLineStep;
+    }
+
+    drawTextAt(ctx, "settings_help_title", LauncherTheme::kSettingsHelpTitleText, color, areaLeft, y,
+               1.0f, 1);
+    y += 34;
+    drawTextAt(ctx, "settings_help_line1", LauncherTheme::kSettingsHelpLine1Text, color, areaLeft, y,
+               0.85f, 0);
+    y += kLineStep;
+    drawTextAt(ctx, "settings_help_line3", LauncherTheme::kSettingsHelpLine3Text, color, areaLeft, y,
+               0.85f, 0);
+    y += kLineStep;
+    drawTextAt(ctx, "settings_help_line3_ptr", LauncherTheme::kSettingsHelpLine3PointerText, color,
+               areaLeft, y, 0.85f, 0);
+    y += kLineStep;
+    drawTextAt(ctx, "settings_help_line5", LauncherTheme::kSettingsHelpLine5Text, color, areaLeft, y,
+               0.85f, 0);
+    y += kLineStep;
+    drawTextAt(ctx, "settings_help_line6", LauncherTheme::kSettingsHelpLine6Text, color, areaLeft, y,
+               0.78f, 0);
 }
 
 void SettingsScene::drawTextAt(const LauncherSceneRenderContext &ctx, const char *cacheKey,

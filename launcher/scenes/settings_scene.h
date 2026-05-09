@@ -24,6 +24,7 @@ private:
     void drawButtonText(const LauncherSceneRenderContext &ctx, const char *cachePrefix,
                         const char *text, bool selected, int centerX, int y);
     void drawAuthorProfile(const LauncherSceneRenderContext &ctx, const SDL_Rect &panel);
+    void drawSimulatorHelpPanel(const LauncherSceneRenderContext &ctx, const SDL_Rect &panel);
     void drawTextAt(const LauncherSceneRenderContext &ctx, const char *cacheKey, const char *text,
                     const SDL_Color &color, int leftX, int y, float scale, int shadowOffset);
     void drawText(const LauncherSceneRenderContext &ctx, const char *cacheKey, const char *text,

@@ -7,6 +7,26 @@
 #include <cstdlib>
 #include <cstring>
 
+bool MenuUI::shouldIgnoreJoystickInputEvent(const SDL_Event &event) const {
+    if (!controller_)
+        return false;
+
+    switch (event.type) {
+    case SDL_JOYBUTTONDOWN:
+    case SDL_JOYBUTTONUP: {
+        // 某些掌机会把同一物理键同时上报为 Controller + Joystick。
+        // 仅屏蔽易冲突的 A/B（0/1）重复事件，保留 Menu(10) 等专用按键。
+        const Uint8 btn = event.jbutton.button;
+        return (btn == 0 || btn == 1);
+    }
+    case SDL_JOYAXISMOTION:
+    case SDL_JOYHATMOTION:
+        return true;
+    default:
+        return false;
+    }
+}
+
 bool MenuUI::init(const std::string &fontPath, const std::string &launcherDataDir, bool windowed,
                   int windowWidth, int windowHeight) {
     fontPath_ = fontPath;
@@ -231,6 +251,8 @@ int MenuUI::run(const std::vector<GameEntry> &games) {
                 handleDeviceAdded(static_cast<int>(e.cdevice.which));
             } else if (e.type == SDL_CONTROLLERDEVICEREMOVED) {
                 handleDeviceRemoved(static_cast<Sint32>(e.cdevice.which));
+            } else if (shouldIgnoreJoystickInputEvent(e)) {
+                continue;
             } else {
                 LauncherSceneInputContext inputCtx = {games, selected, count, action};
                 sceneManager_->currentScene().handleEvent(e, inputCtx);

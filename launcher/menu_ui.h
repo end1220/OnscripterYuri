@@ -28,6 +28,8 @@ public:
     int run(const std::vector<GameEntry> &games);
 
 private:
+    bool shouldIgnoreJoystickInputEvent(const SDL_Event &event) const;
+
     void openDevice(int index);
     void closeDevice();
     void handleDeviceAdded(int index);

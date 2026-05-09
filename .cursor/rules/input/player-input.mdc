@@ -92,10 +92,18 @@ globs:
 
 ### 手柄（与引擎映射不同，此处为菜单专用）
 
-- `SDL_CONTROLLERBUTTONDOWN`：`A`/`B` 确认；`DPAD_UP`/`DOWN` 移动选中；`BTN_MENU`（代码里与掌机布局一致，如 index 10）退出。
-- `SDL_CONTROLLERAXISMOTION`：仅 `SDL_CONTROLLER_AXIS_LEFTY` 经 `handleControllerAxis`（死区 `AXIS_DEADZONE`）上下选。
-- `SDL_JOYBUTTONDOWN`：按索引 `BTN_A` / `BTN_B` 确认，`BTN_MENU` 退出（与引擎全局 `transJoystickButton` 不是同一套语义）。
-- `SDL_JOYAXISMOTION`：仅 axis 1（Y）走 `handleJoyAxis`；`SDL_JOYHATMOTION`：上下对应 `trySelectUp` / `trySelectDown`。
+- 事件入口在 `MenuUI::run`，但按键语义实际在场景类：
+  - 主界面：`MainScene::handleEvent` + `LauncherMenuInput`
+  - 设置页：`SettingsScene::handleEvent`
+- 主界面（`MainScene`）：
+  - `SDL_CONTROLLERBUTTONDOWN`：`B` 确认启动；`A` 被显式忽略；`Menu(10)` 切到设置。
+  - `SDL_JOYBUTTONDOWN`：`btn==0(BTN_B)` 确认启动；`btn==10(BTN_MENU)` 切到设置。
+  - `DPAD`、左摇杆、`JOYHAT/JOYAXIS` 仅用于移动选中项（具体布局在 `LauncherMenuInput` 中区分 Vertical / SwitchRow / Grid）。
+- 设置页（`SettingsScene`）：
+  - `B` 为“确认当前聚焦按钮”；
+  - `A` 为“清除聚焦或返回主界面”；
+  - `Menu(10)` 返回主界面。
+- `SDL_CONTROLLERAXISMOTION` 与 `SDL_JOYAXISMOTION` 均使用约 `16000` 死区，防止轻微漂移导致重复移动。
 - 设备插拔：`SDL_JOYDEVICE*` / `SDL_CONTROLLERDEVICE*`，`handleDeviceAdded` / `handleDeviceRemoved`。
 
 ### 鼠标
@@ -108,3 +116,4 @@ globs:
 1. **引擎**：改键位或手柄映射时，同步检查 `transKey`、`transJoystickButton`、`transControllerButton` 与 `mousePressEvent` / `keyPressEvent` 是否会重复触发（如 `btndown_flag`）。
 2. **Launcher**：改手柄逻辑时区分「SDL GameController」与「原始 Joystick」两条路径；掌机物理键位索引（0/1/10 等）与引擎内全局映射表可能不一致，属有意为之。
 3. **平台宏**：触摸与鼠标分支由 `IOS`/`ANDROID`/`WINRT`/`WEB` 等宏隔离，改条件编译路径时需在目标平台实测。
+4. **重复事件陷阱（掌机高频）**：某些设备一个物理按键会同时触发 `SDL_CONTROLLERBUTTONDOWN` 与 `SDL_JOYBUTTONDOWN`。当前 Launcher 主界面未按 instance id 过滤这两条路径，故可能出现“物理 A 也触发确认启动”的现象（虽然代码只把 `Controller B` 与 `Joy btn0` 视作确认）。
