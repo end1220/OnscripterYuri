@@ -17,6 +17,7 @@ public:
 private:
     void focusNextButton();
     void focusPrevButton();
+    bool canMoveFocus();
     void clearFocus();
     void confirmFocused(LauncherSceneAction &action);
     void drawPanel(const LauncherSceneRenderContext &ctx, const SDL_Rect &panel);
@@ -30,6 +31,9 @@ private:
 
     MainScene &mainScene_;
     int focusedButton_ = -1;
+    int axisXState_ = 0;
+    int axisYState_ = 0;
+    Uint32 lastFocusMoveTicks_ = 0;
     SDL_Texture *blurredBackground_ = nullptr;
     int blurredW_ = 0;
     int blurredH_ = 0;

@@ -59,10 +59,24 @@ SettingsScene::~SettingsScene() {
 
 void SettingsScene::onEnter() {
     focusedButton_ = -1;
+    axisXState_ = 0;
+    axisYState_ = 0;
+    lastFocusMoveTicks_ = 0;
+}
+
+bool SettingsScene::canMoveFocus() {
+    static const Uint32 kDebounceMs = 130;
+    Uint32 now = SDL_GetTicks();
+    if (now - lastFocusMoveTicks_ < kDebounceMs)
+        return false;
+    lastFocusMoveTicks_ = now;
+    return true;
 }
 
 void SettingsScene::focusNextButton() {
     static const int kButtonCount = 4;
+    if (!canMoveFocus())
+        return;
     if (focusedButton_ < 0)
         focusedButton_ = 0;
     else
@@ -71,6 +85,8 @@ void SettingsScene::focusNextButton() {
 
 void SettingsScene::focusPrevButton() {
     static const int kButtonCount = 4;
+    if (!canMoveFocus())
+        return;
     if (focusedButton_ < 0)
         focusedButton_ = kButtonCount - 1;
     else
@@ -155,6 +171,41 @@ void SettingsScene::handleEvent(const SDL_Event &event, LauncherSceneInputContex
             focusPrevButton();
         else if (event.jhat.value & (SDL_HAT_DOWN | SDL_HAT_RIGHT))
             focusNextButton();
+    } else if (event.type == SDL_CONTROLLERAXISMOTION) {
+        static const Sint16 kDeadzone = 16000;
+        if (event.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY) {
+            if (event.caxis.value < -kDeadzone) {
+                if (axisYState_ != -1) {
+                    focusPrevButton();
+                    axisYState_ = -1;
+                }
+            } else if (event.caxis.value > kDeadzone) {
+                if (axisYState_ != 1) {
+                    focusNextButton();
+                    axisYState_ = 1;
+                }
+            } else {
+                axisYState_ = 0;
+            }
+        }
+    } else if (event.type == SDL_JOYAXISMOTION) {
+        static const Sint16 kDeadzone = 16000;
+        if (event.jaxis.axis == 1) {
+            Sint16 value = static_cast<Sint16>(event.jaxis.value);
+            if (value < -kDeadzone) {
+                if (axisYState_ != -1) {
+                    focusPrevButton();
+                    axisYState_ = -1;
+                }
+            } else if (value > kDeadzone) {
+                if (axisYState_ != 1) {
+                    focusNextButton();
+                    axisYState_ = 1;
+                }
+            } else {
+                axisYState_ = 0;
+            }
+        }
     } else if (event.type == SDL_JOYBUTTONDOWN) {
         int btn = event.jbutton.button;
         if (btn == BTN_MENU) {

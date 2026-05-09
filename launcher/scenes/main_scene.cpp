@@ -16,6 +16,14 @@ void MainScene::handleEvent(const SDL_Event &event, LauncherSceneInputContext &c
             ctx.action.switchTo = LauncherSceneTarget::kSettings;
             return;
         }
+        if (event.cbutton.button == SDL_CONTROLLER_BUTTON_B) {
+            if (ctx.count > 0)
+                ctx.action.confirm = true;
+            return;
+        }
+        if (event.cbutton.button == SDL_CONTROLLER_BUTTON_A) {
+            return;
+        }
         menuInput_.handleControllerButton(event.cbutton.button, ctx.selected, ctx.count,
                                           ctx.action.confirm, ctx.action.quit);
     } else if (event.type == SDL_KEYDOWN) {
