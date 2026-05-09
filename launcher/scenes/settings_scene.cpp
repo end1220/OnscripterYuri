@@ -130,10 +130,10 @@ void SettingsScene::handleEvent(const SDL_Event &event, LauncherSceneInputContex
         case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
             focusNextButton();
             break;
-        case SDL_CONTROLLER_BUTTON_A:
+        case SDL_CONTROLLER_BUTTON_B:
             confirmFocused(ctx.action);
             break;
-        case SDL_CONTROLLER_BUTTON_B:
+        case SDL_CONTROLLER_BUTTON_A:
             if (focusedButton_ >= 0)
                 clearFocus();
             else
@@ -149,9 +149,9 @@ void SettingsScene::handleEvent(const SDL_Event &event, LauncherSceneInputContex
             focusNextButton();
     } else if (event.type == SDL_JOYBUTTONDOWN) {
         int btn = event.jbutton.button;
-        if (btn == BTN_A) {
+        if (btn == BTN_B) {
             confirmFocused(ctx.action);
-        } else if (btn == BTN_B) {
+        } else if (btn == BTN_A) {
             if (focusedButton_ >= 0)
                 clearFocus();
             else
@@ -215,7 +215,7 @@ void SettingsScene::draw(const LauncherSceneRenderContext &ctx) {
         drawAuthorProfile(ctx, panel);
     } else if (focusedButton_ == 2) {
         int areaLeft = panel.x + panel.w / 2 - 116;
-        int areaTop = panel.y + panel.h / 4;
+        int areaTop = panel.y + panel.h / 6;
         drawTextAt(ctx, "settings_about_line1", LauncherTheme::kSettingsAboutLine1Text,
                    LauncherTheme::settingsText(), areaLeft, areaTop, 0.95f, 1);
         drawTextAt(ctx, "settings_about_line2", LauncherTheme::kSettingsAboutLine2Text,
@@ -339,7 +339,7 @@ void SettingsScene::drawButtonText(const LauncherSceneRenderContext &ctx, const 
 
 void SettingsScene::drawAuthorProfile(const LauncherSceneRenderContext &ctx, const SDL_Rect &panel) {
     int areaLeft = panel.x + panel.w / 2 - 96;
-    int areaTop = panel.y + panel.h / 4;
+    int areaTop = panel.y + panel.h / 6;
     int imageSize = panel.h / 4;
     imageSize = static_cast<int>(imageSize * 1.3f);
     if (imageSize > 160)
