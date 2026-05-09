@@ -93,7 +93,6 @@ void LauncherMenuInput::handleControllerButton(Uint8 button, int &selected, int 
     (void)quit;
     if (LauncherTheme::kLayout == LauncherTheme::Layout::kGrid) {
         switch (button) {
-        case SDL_CONTROLLER_BUTTON_A:
         case SDL_CONTROLLER_BUTTON_B:
             if (count > 0)
                 confirm = true;
@@ -119,7 +118,6 @@ void LauncherMenuInput::handleControllerButton(Uint8 button, int &selected, int 
         }
     } else if (LauncherTheme::kLayout == LauncherTheme::Layout::kSwitchRow) {
         switch (button) {
-        case SDL_CONTROLLER_BUTTON_A:
         case SDL_CONTROLLER_BUTTON_B:
             if (count > 0)
                 confirm = true;
@@ -137,7 +135,6 @@ void LauncherMenuInput::handleControllerButton(Uint8 button, int &selected, int 
         }
     } else {
         switch (button) {
-        case SDL_CONTROLLER_BUTTON_A:
         case SDL_CONTROLLER_BUTTON_B:
             if (count > 0)
                 confirm = true;

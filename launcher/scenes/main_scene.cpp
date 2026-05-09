@@ -33,7 +33,7 @@ void MainScene::handleEvent(const SDL_Event &event, LauncherSceneInputContext &c
         int btn = event.jbutton.button;
         if (btn == BTN_MENU) {
             ctx.action.switchTo = LauncherSceneTarget::kSettings;
-        } else if (btn == BTN_A || btn == BTN_B) {
+        } else if (btn == BTN_B) {
             if (ctx.count > 0)
                 ctx.action.confirm = true;
         }

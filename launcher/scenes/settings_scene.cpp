@@ -92,9 +92,13 @@ void SettingsScene::confirmFocused(LauncherSceneAction &action) {
 void SettingsScene::handleEvent(const SDL_Event &event, LauncherSceneInputContext &ctx) {
     static constexpr Uint8 BTN_B = 0;
     static constexpr Uint8 BTN_A = 1;
+    static constexpr Uint8 BTN_MENU = 10;
 
     if (event.type == SDL_KEYDOWN) {
         switch (event.key.keysym.sym) {
+        case SDLK_m:
+            ctx.action.switchTo = LauncherSceneTarget::kMain;
+            break;
         case SDLK_UP:
         case SDLK_LEFT:
             focusPrevButton();
@@ -121,6 +125,10 @@ void SettingsScene::handleEvent(const SDL_Event &event, LauncherSceneInputContex
             break;
         }
     } else if (event.type == SDL_CONTROLLERBUTTONDOWN) {
+        if (event.cbutton.button == BTN_MENU) {
+            ctx.action.switchTo = LauncherSceneTarget::kMain;
+            return;
+        }
         switch (event.cbutton.button) {
         case SDL_CONTROLLER_BUTTON_DPAD_UP:
         case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
@@ -149,7 +157,9 @@ void SettingsScene::handleEvent(const SDL_Event &event, LauncherSceneInputContex
             focusNextButton();
     } else if (event.type == SDL_JOYBUTTONDOWN) {
         int btn = event.jbutton.button;
-        if (btn == BTN_B) {
+        if (btn == BTN_MENU) {
+            ctx.action.switchTo = LauncherSceneTarget::kMain;
+        } else if (btn == BTN_B) {
             confirmFocused(ctx.action);
         } else if (btn == BTN_A) {
             if (focusedButton_ >= 0)
@@ -266,10 +276,10 @@ void SettingsScene::captureBlurredBackground(const LauncherSceneRenderContext &c
     std::vector<Uint32> blurA;
     std::vector<Uint32> blurB;
     // 双次盒模糊近似高斯，开销可控且仅在进入设置页时做一次。
-    boxBlurPass(pixels, temp, windowW, windowH, 4, true);
-    boxBlurPass(temp, blurA, windowW, windowH, 4, false);
-    boxBlurPass(blurA, temp, windowW, windowH, 4, true);
-    boxBlurPass(temp, blurB, windowW, windowH, 4, false);
+    boxBlurPass(pixels, temp, windowW, windowH, 3, true);
+    boxBlurPass(temp, blurA, windowW, windowH, 3, false);
+    boxBlurPass(blurA, temp, windowW, windowH, 3, true);
+    boxBlurPass(temp, blurB, windowW, windowH, 3, false);
 
     SDL_Texture *newTex =
         SDL_CreateTexture(ctx.renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STATIC, windowW,
