@@ -44,7 +44,7 @@ const char *LauncherTheme::kSettingsAuthorTabText = "作 者";
 const char *LauncherTheme::kSettingsAboutTabText = "关 于";
 const char *LauncherTheme::kSettingsAuthorNameText = "洛克摸摸鱼";
 const char *LauncherTheme::kSettingsAuthorLinkText = "哔哩哔哩 https://b23.tv/3HaIROb";
-const char *LauncherTheme::kSettingsHelpTitleText = "模拟器说明";
+const char *LauncherTheme::kSettingsHelpTitleText = "ONS启动器2.0.0";
 const char *LauncherTheme::kSettingsHelpLine1Text =
     "ONS 游戏请解压至卡1的 Roms/ONS 目录内。";
 const char *LauncherTheme::kSettingsHelpLine3Text =
