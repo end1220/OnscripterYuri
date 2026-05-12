@@ -63,7 +63,7 @@ void MainScene::renderMainUi(const LauncherSceneRenderContext &ctx) {
 
     chrome_.clearBackground(ctx.renderer, windowW, windowH);
     chrome_.drawBackgroundOverlay(ctx.textureCache, ctx.renderer, windowW, windowH);
-    chrome_.drawTitle(ctx.titleFont, ctx.renderer, windowW);
+    chrome_.drawTitle(ctx.textureCache, ctx.renderer, windowW);
 
     const int listTop = LauncherTheme::kListTopMargin;
     const int listBottomMargin = LauncherTheme::kListBottomMargin;
@@ -73,14 +73,15 @@ void MainScene::renderMainUi(const LauncherSceneRenderContext &ctx) {
     SDL_Rect listClip = {0, listTop, windowW, listHeight};
     SDL_RenderSetClipRect(ctx.renderer, &listClip);
 
-    const char *bottomHint = (LauncherTheme::kLayout == LauncherTheme::Layout::kGrid)
-                                 ? LauncherTheme::kBottomOpsHintGrid
-                                 : LauncherTheme::kBottomOpsHintDefault;
-
     if (ctx.games.empty()) {
         chrome_.drawEmptyListHint(ctx.font, ctx.renderer, windowW, windowH);
         SDL_RenderSetClipRect(ctx.renderer, nullptr);
-        chrome_.drawBottomOpsHint(ctx.font, ctx.renderer, windowW, windowH, bottomHint);
+        if (LauncherTheme::kLayout == LauncherTheme::Layout::kGrid)
+            chrome_.drawBottomOpsHintImage(ctx.textureCache, ctx.renderer, windowW, windowH,
+                                           LauncherTheme::kBottomOpsHintGridImage);
+        else
+            chrome_.drawBottomOpsHint(ctx.font, ctx.renderer, windowW, windowH,
+                                       LauncherTheme::kBottomOpsHintDefault);
         return;
     }
 
@@ -108,5 +109,10 @@ void MainScene::renderMainUi(const LauncherSceneRenderContext &ctx) {
         return;
     }
 
-    chrome_.drawBottomOpsHint(ctx.font, ctx.renderer, windowW, windowH, bottomHint);
+    if (LauncherTheme::kLayout == LauncherTheme::Layout::kGrid)
+        chrome_.drawBottomOpsHintImage(ctx.textureCache, ctx.renderer, windowW, windowH,
+                                      LauncherTheme::kBottomOpsHintGridImage);
+    else
+        chrome_.drawBottomOpsHint(ctx.font, ctx.renderer, windowW, windowH,
+                                  LauncherTheme::kBottomOpsHintDefault);
 }

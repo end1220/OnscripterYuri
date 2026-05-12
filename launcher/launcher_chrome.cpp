@@ -20,51 +20,33 @@ void LauncherChrome::drawBackgroundOverlay(LauncherTextureCache &cache, SDL_Rend
     }
 }
 
-void LauncherChrome::drawTitle(TTF_Font *titleFont, SDL_Renderer *renderer, int windowW) {
-    if (!titleFont)
+void LauncherChrome::drawTitle(LauncherTextureCache &cache, SDL_Renderer *renderer, int windowW) {
+    if (!renderer)
         return;
-    const char *titleText = LauncherTheme::kTitleText;
-    const int kTitleOutlinePx = LauncherTheme::kTitleOutlinePx;
-
-    int titleX = 0;
-    int titleY = 0;
-    int titleW = 0;
-    int titleH = 0;
-
-    TTF_SetFontOutline(titleFont, kTitleOutlinePx);
-    SDL_Surface *strokeSurf =
-        TTF_RenderUTF8_Blended(titleFont, titleText, LauncherTheme::titleStroke());
-    if (strokeSurf) {
-        SDL_Texture *strokeTex = SDL_CreateTextureFromSurface(renderer, strokeSurf);
-        if (strokeTex) {
-            titleW = strokeSurf->w;
-            titleH = strokeSurf->h;
-            titleX = (windowW - titleW) / 2;
-            titleY = (LauncherTheme::kListTopMargin - titleH) / 2;
-            SDL_Rect dst = {titleX, titleY, titleW, titleH};
-            SDL_RenderCopy(renderer, strokeTex, nullptr, &dst);
-            SDL_DestroyTexture(strokeTex);
-        }
-        SDL_FreeSurface(strokeSurf);
+    SDL_Texture *tex = cache.getIconTexture(LauncherTheme::kTitleImage);
+    if (!tex)
+        return;
+    int tw = 0;
+    int th = 0;
+    if (SDL_QueryTexture(tex, nullptr, nullptr, &tw, &th) != 0 || tw <= 0 || th <= 0)
+        return;
+    int dstW = tw;
+    int dstH = th;
+    static constexpr int kTitleSideMargin = 16;
+    if (dstW > windowW - kTitleSideMargin) {
+        dstW = windowW - kTitleSideMargin;
+        if (dstW < 1)
+            dstW = 1;
+        dstH = (th * dstW) / tw;
+        if (dstH < 1)
+            dstH = 1;
     }
-
-    TTF_SetFontOutline(titleFont, 0);
-    SDL_Surface *fillSurf = TTF_RenderUTF8_Blended(titleFont, titleText, LauncherTheme::titleFill());
-    if (fillSurf) {
-        SDL_Texture *fillTex = SDL_CreateTextureFromSurface(renderer, fillSurf);
-        if (fillTex) {
-            if (titleW == 0 || titleH == 0) {
-                titleW = fillSurf->w;
-                titleH = fillSurf->h;
-                titleX = (windowW - titleW) / 2;
-                titleY = (LauncherTheme::kListTopMargin - titleH) / 2;
-            }
-            SDL_Rect dst = {titleX, titleY, fillSurf->w, fillSurf->h};
-            SDL_RenderCopy(renderer, fillTex, nullptr, &dst);
-            SDL_DestroyTexture(fillTex);
-        }
-        SDL_FreeSurface(fillSurf);
-    }
+    const int titleX = (windowW - dstW) / 2;
+    int titleY = (LauncherTheme::kListTopMargin - dstH) / 2;
+    if (titleY < 0)
+        titleY = 0;
+    const SDL_Rect dst = {titleX, titleY, dstW, dstH};
+    SDL_RenderCopy(renderer, tex, nullptr, &dst);
 }
 
 void LauncherChrome::drawEmptyListHint(TTF_Font *listFont, SDL_Renderer *renderer, int windowW,
@@ -109,4 +91,29 @@ void LauncherChrome::drawBottomOpsHint(TTF_Font *listFont, SDL_Renderer *rendere
         SDL_DestroyTexture(opsTex);
     }
     SDL_FreeSurface(opsSurf);
+}
+
+void LauncherChrome::drawBottomOpsHintImage(LauncherTextureCache &cache, SDL_Renderer *renderer,
+                                             int windowW, int windowH, const char *iconPath,
+                                             float scale) {
+    if (!renderer || !iconPath)
+        return;
+    SDL_Texture *tex = cache.getIconTexture(iconPath);
+    if (!tex)
+        return;
+    int tw = 0;
+    int th = 0;
+    if (SDL_QueryTexture(tex, nullptr, nullptr, &tw, &th) != 0 || tw <= 0 || th <= 0)
+        return;
+    int dstW = static_cast<int>(tw * scale);
+    int dstH = static_cast<int>(th * scale);
+    if (dstW <= 0)
+        dstW = tw;
+    if (dstH <= 0)
+        dstH = th;
+    const int padding = LauncherTheme::kBottomOpsPadding;
+    const int textX = windowW - dstW - padding;
+    const int textY = windowH - dstH;
+    const SDL_Rect dst = {textX, textY, dstW, dstH};
+    SDL_RenderCopy(renderer, tex, nullptr, &dst);
 }

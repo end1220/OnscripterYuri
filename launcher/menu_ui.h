@@ -38,7 +38,6 @@ private:
     SDL_Window *window_ = nullptr;
     SDL_Renderer *renderer_ = nullptr;
     TTF_Font *font_ = nullptr;
-    TTF_Font *titleFont_ = nullptr;
     SDL_GameController *controller_ = nullptr;
     SDL_Joystick *joystick_ = nullptr;
     std::string fontPath_;

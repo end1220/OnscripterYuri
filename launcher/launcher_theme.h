@@ -26,8 +26,6 @@ struct LauncherTheme {
     static const SDL_Color &gameNameSelected();
     static const SDL_Color &itemBg();
     static const SDL_Color &itemBgSelected();
-    static const SDL_Color &titleFill();
-    static const SDL_Color &titleStroke();
     static const SDL_Color &emptyHint();
     static const SDL_Color &hintOps();
     static const SDL_Color &iconPlaceholder();
@@ -38,11 +36,9 @@ struct LauncherTheme {
     static const SDL_Color &settingsButtonFocused();
     static const SDL_Color &settingsText();
 
-    static constexpr int kTitleFontSize = 50;
     static constexpr int kGameNameFontSize = 26;
     static constexpr int kListTopMargin = 70;
     static constexpr Uint8 kBgOverlayAlpha = 100;
-    static constexpr int kTitleOutlinePx = 2;
     static constexpr int kListBottomMargin = 40;
     static constexpr int kBottomOpsPadding = 20;
     static constexpr int kSettingsPanelSize = 420;
@@ -107,12 +103,13 @@ struct LauncherTheme {
         static constexpr Uint8 kEmptyCellAlpha = 90;
     };
 
-    static const char *kTitleText;
+    /** 顶栏标题图（pak 内逻辑路径需带 data/ 前缀） */
+    static const char *kTitleImage;
     static const char *kEmptyListHint;
     /** 右下角操作提示（空列表与非空列表正常帧） */
     static const char *kBottomOpsHintDefault;
-    /** Grid 布局右下角操作提示 */
-    static const char *kBottomOpsHintGrid;
+    /** Grid 布局右下角操作提示图（pak 内逻辑路径需带 data/ 前缀） */
+    static const char *kBottomOpsHintGridImage;
     static const char *kSettingsExitText;
     static const char *kSettingsReturnText;
     static const char *kSettingsAuthorTabText;

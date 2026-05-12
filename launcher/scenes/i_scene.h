@@ -32,15 +32,14 @@ struct LauncherSceneInputContext {
 };
 
 struct LauncherSceneRenderContext {
-    LauncherSceneRenderContext(SDL_Renderer *sdlRenderer, TTF_Font *listFont, TTF_Font *headingFont,
+    LauncherSceneRenderContext(SDL_Renderer *sdlRenderer, TTF_Font *listFont,
                                LauncherTextureCache &cache,
                                const std::vector<GameEntry> &gameEntries, int selectedIndex)
-        : renderer(sdlRenderer), font(listFont), titleFont(headingFont), textureCache(cache),
-          games(gameEntries), selected(selectedIndex) {}
+        : renderer(sdlRenderer), font(listFont), textureCache(cache), games(gameEntries),
+          selected(selectedIndex) {}
 
     SDL_Renderer *renderer;
     TTF_Font *font;
-    TTF_Font *titleFont;
     LauncherTextureCache &textureCache;
     const std::vector<GameEntry> &games;
     int selected;

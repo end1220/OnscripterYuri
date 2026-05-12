@@ -19,12 +19,16 @@ public:
     /** 绘制 data/bg.jpg 叠层；绘制后将纹理 alpha 恢复为 255 */
     void drawBackgroundOverlay(LauncherTextureCache &cache, SDL_Renderer *renderer, int windowW, int windowH);
 
-    void drawTitle(TTF_Font *titleFont, SDL_Renderer *renderer, int windowW);
+    void drawTitle(LauncherTextureCache &cache, SDL_Renderer *renderer, int windowW);
 
     void drawEmptyListHint(TTF_Font *listFont, SDL_Renderer *renderer, int windowW, int windowH);
 
     void drawBottomOpsHint(TTF_Font *listFont, SDL_Renderer *renderer, int windowW, int windowH,
                            const char *hintOps, float scale = 1.0f);
+
+    /** 右下角操作提示（图片，与 drawBottomOpsHint 对齐位置） */
+    void drawBottomOpsHintImage(LauncherTextureCache &cache, SDL_Renderer *renderer, int windowW,
+                                int windowH, const char *iconPath, float scale = 1.0f);
 };
 
 #endif

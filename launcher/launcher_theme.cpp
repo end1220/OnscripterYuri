@@ -5,8 +5,6 @@ static const SDL_Color kGameName = {225, 240, 245, 255};
 static const SDL_Color kGameNameSel = {66, 225, 205, 255};
 static const SDL_Color kItemBg = {0, 235, 205, 0};
 static const SDL_Color kItemBgSel = {235, 235, 235, 120};
-static const SDL_Color kTitle = {245, 235, 245, 255};
-static const SDL_Color kTitleStroke = {0, 90, 120, 255};
 static const SDL_Color kEmptyHint = {170, 190, 200, 255};
 static const SDL_Color kHintOps = {185, 205, 215, 255};
 static const SDL_Color kIconPlaceholder = {200, 230, 235, 255};
@@ -22,8 +20,6 @@ const SDL_Color &LauncherTheme::gameName() { return kGameName; }
 const SDL_Color &LauncherTheme::gameNameSelected() { return kGameNameSel; }
 const SDL_Color &LauncherTheme::itemBg() { return kItemBg; }
 const SDL_Color &LauncherTheme::itemBgSelected() { return kItemBgSel; }
-const SDL_Color &LauncherTheme::titleFill() { return kTitle; }
-const SDL_Color &LauncherTheme::titleStroke() { return kTitleStroke; }
 const SDL_Color &LauncherTheme::emptyHint() { return kEmptyHint; }
 const SDL_Color &LauncherTheme::hintOps() { return kHintOps; }
 const SDL_Color &LauncherTheme::iconPlaceholder() { return kIconPlaceholder; }
@@ -34,10 +30,10 @@ const SDL_Color &LauncherTheme::settingsButton() { return kSettingsButton; }
 const SDL_Color &LauncherTheme::settingsButtonFocused() { return kSettingsButtonFocused; }
 const SDL_Color &LauncherTheme::settingsText() { return kSettingsText; }
 
-const char *LauncherTheme::kTitleText = "ONS游戏";
+const char *LauncherTheme::kTitleImage = "data/title.png";
 const char *LauncherTheme::kEmptyListHint = "Roms/ONS目录里未包含ONS游戏哦~";
 const char *LauncherTheme::kBottomOpsHintDefault = "Ⓜ菜单  Ⓐ启动 ";
-const char *LauncherTheme::kBottomOpsHintGrid = "✚导航  Ⓐ启动  Ⓜ菜单";
+const char *LauncherTheme::kBottomOpsHintGridImage = "data/keys ui.png";
 const char *LauncherTheme::kSettingsExitText = "退 出";
 const char *LauncherTheme::kSettingsReturnText = "返 回";
 const char *LauncherTheme::kSettingsAuthorTabText = "作 者";
@@ -54,7 +50,7 @@ const char *LauncherTheme::kSettingsHelpBodyText =
 const char *LauncherTheme::kSettingsAboutFooterText =
     "OnscripterYuri项目：\nhttps://github.com/YuriSizuku/OnscripterYuri";
 const char *LauncherTheme::kSettingsVersionText = "版本：2.0.0";
-const char *LauncherTheme::kSettingsAboutDeviceBannerText = "Miniloong Pocket1掌机专用";
+const char *LauncherTheme::kSettingsAboutDeviceBannerText = "Miniloong掌机专用";
 const char *LauncherTheme::kSettingsSignatureText = "菜 单";
 const char *LauncherTheme::kGridSelectedBgImage = "data/cell_light.png";
 const char *LauncherTheme::kGridIconMaskImage = "data/icon_mask.png";

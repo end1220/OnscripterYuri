@@ -121,23 +121,9 @@ bool MenuUI::init(const std::string &fontPath, const std::string &launcherDataDi
         std::fprintf(stderr, "[Launcher] SDL_RenderSetLogicalSize failed: %s\n", SDL_GetError());
     SDL_RenderSetIntegerScale(renderer_, SDL_FALSE);
 
-    titleFont_ = TTF_OpenFont(path, LauncherTheme::kTitleFontSize);
-    if (!titleFont_) {
-        std::fprintf(stderr, "TTF_OpenFont (title) failed for %s: %s\n", path, TTF_GetError());
-        SDL_DestroyRenderer(renderer_);
-        renderer_ = nullptr;
-        SDL_DestroyWindow(window_);
-        window_ = nullptr;
-        TTF_Quit();
-        SDL_Quit();
-        return false;
-    }
-
     font_ = TTF_OpenFont(path, LauncherTheme::kGameNameFontSize);
     if (!font_) {
         std::fprintf(stderr, "TTF_OpenFont (game name) failed for %s: %s\n", path, TTF_GetError());
-        TTF_CloseFont(titleFont_);
-        titleFont_ = nullptr;
         SDL_DestroyRenderer(renderer_);
         renderer_ = nullptr;
         SDL_DestroyWindow(window_);
@@ -198,10 +184,6 @@ void MenuUI::shutdown() {
         TTF_CloseFont(font_);
         font_ = nullptr;
     }
-    if (titleFont_) {
-        TTF_CloseFont(titleFont_);
-        titleFont_ = nullptr;
-    }
     if (renderer_) {
         SDL_DestroyRenderer(renderer_);
         renderer_ = nullptr;
@@ -260,7 +242,7 @@ int MenuUI::run(const std::vector<GameEntry> &games) {
         }
 
         if (action.switchTo == LauncherSceneTarget::kSettings) {
-            LauncherSceneRenderContext captureCtx(renderer_, font_, titleFont_, textureCache_, games,
+            LauncherSceneRenderContext captureCtx(renderer_, font_, textureCache_, games,
                                                   selected);
             settingsScene_->captureBlurredBackground(captureCtx);
         }
@@ -273,7 +255,7 @@ int MenuUI::run(const std::vector<GameEntry> &games) {
         if (action.confirm)
             return selected;
 
-        LauncherSceneRenderContext renderCtx(renderer_, font_, titleFont_, textureCache_, games,
+        LauncherSceneRenderContext renderCtx(renderer_, font_, textureCache_, games,
                                              selected);
         sceneManager_->currentScene().draw(renderCtx);
         SDL_RenderPresent(renderer_);
