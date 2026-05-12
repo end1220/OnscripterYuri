@@ -27,6 +27,9 @@ private:
     void drawSimulatorHelpPanel(const LauncherSceneRenderContext &ctx, const SDL_Rect &panel);
     void drawTextAt(const LauncherSceneRenderContext &ctx, const char *cacheKey, const char *text,
                     const SDL_Color &color, int leftX, int y, float scale, int shadowOffset);
+    int drawWrappedTextBlock(const LauncherSceneRenderContext &ctx, const char *cacheKey,
+                             const char *text, const SDL_Color &color, int leftX, int y,
+                             int maxWidth, float scale, int shadowOffset);
     void drawText(const LauncherSceneRenderContext &ctx, const char *cacheKey, const char *text,
                   const SDL_Color &color, int centerX, int y, float scale, int shadowOffset);
 

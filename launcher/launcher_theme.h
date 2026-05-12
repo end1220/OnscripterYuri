@@ -121,14 +121,11 @@ struct LauncherTheme {
     static const char *kSettingsAuthorLinkText;
     /** 设置页右侧默认说明（返 回 / 关 于 / 退 出 等与「作者」并列项共用；「作者」为简介） */
     static const char *kSettingsHelpTitleText;
-    static const char *kSettingsHelpLine1Text;
-    static const char *kSettingsHelpLine3Text;
-    /** kSettingsHelpLine3Text 续行（避免单行过长超出右侧面板） */
-    static const char *kSettingsHelpLine3PointerText;
-    static const char *kSettingsHelpLine5Text;
+    static const char *kSettingsHelpBodyText;
+    static const char *kSettingsAboutFooterText;
+    static const char *kSettingsVersionText;
     /** 选中「关 于」时右侧说明区最上方一行 */
     static const char *kSettingsAboutDeviceBannerText;
-    static const char *kSettingsHelpLine6Text;
     static const char *kSettingsSignatureText;
     /** Grid 选中高亮背景图（pak 逻辑路径需带 data/ 前缀） */
     static const char *kGridSelectedBgImage;

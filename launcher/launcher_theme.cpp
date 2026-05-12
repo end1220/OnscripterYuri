@@ -44,16 +44,16 @@ const char *LauncherTheme::kSettingsAuthorTabText = "作 者";
 const char *LauncherTheme::kSettingsAboutTabText = "关 于";
 const char *LauncherTheme::kSettingsAuthorNameText = "洛克摸摸鱼";
 const char *LauncherTheme::kSettingsAuthorLinkText = "哔哩哔哩 https://b23.tv/3HaIROb";
-const char *LauncherTheme::kSettingsHelpTitleText = "ONS启动器2.0.0";
-const char *LauncherTheme::kSettingsHelpLine1Text =
-    "ONS 游戏请解压至卡1的 Roms/ONS 目录内。";
-const char *LauncherTheme::kSettingsHelpLine3Text =
-    "ONS 游戏内：Ⓐ 确认；Ⓑ 取消；↑↓键切换按钮/选项；";
-const char *LauncherTheme::kSettingsHelpLine3PointerText = "左摇杆可移动光标指针";
-const char *LauncherTheme::kSettingsHelpLine5Text =
-    "同时按住 Select 与 Start 可强制退出程序。";
-const char *LauncherTheme::kSettingsHelpLine6Text =
-    "OnscripterYuri · https://github.com/YuriSizuku/OnscripterYuri";
+const char *LauncherTheme::kSettingsHelpTitleText = "ONS启动器";
+const char *LauncherTheme::kSettingsHelpBodyText =
+    "ONS游戏目录：\n解压ONS游戏至卡1的Roms/ONS目录内。"
+    "游戏内按键操作：\n"
+    "  A确认；B取消；↑↓键切换按钮/选项；\n"
+    "  移动左摇杆可呼出光标指针；\n"
+    "  Select + Start可强制退出程序";
+const char *LauncherTheme::kSettingsAboutFooterText =
+    "OnscripterYuri项目：\nhttps://github.com/YuriSizuku/OnscripterYuri";
+const char *LauncherTheme::kSettingsVersionText = "版本：2.0.0";
 const char *LauncherTheme::kSettingsAboutDeviceBannerText = "Miniloong Pocket1掌机专用";
 const char *LauncherTheme::kSettingsSignatureText = "菜 单";
 const char *LauncherTheme::kGridSelectedBgImage = "data/cell_light.png";

@@ -3,6 +3,18 @@
 
 #include <SDL_image.h>
 
+#include <string>
+
+namespace {
+static std::string makeTextCacheKey(const std::string &prefix, const std::string &cacheKey,
+                                    const std::string &text, const SDL_Color &color,
+                                    int wrapWidth) {
+    return prefix + cacheKey + "|" + std::to_string(wrapWidth) + "|" +
+           std::to_string(color.r) + "," + std::to_string(color.g) + "," +
+           std::to_string(color.b) + "," + std::to_string(color.a) + "|" + text;
+}
+} // namespace
+
 void LauncherTextureCache::init(SDL_Renderer *renderer, TTF_Font *listFont) {
     renderer_ = renderer;
     listFont_ = listFont;
@@ -147,6 +159,56 @@ SDL_Texture *LauncherTextureCache::getTextTexture(const std::string &cacheKey,
     entry.width = surf->w;
     entry.height = surf->h;
     textCache_[cacheKey] = entry;
+
+    outW = entry.width;
+    outH = entry.height;
+
+    SDL_FreeSurface(surf);
+    return tex;
+}
+
+SDL_Texture *LauncherTextureCache::getWrappedTextTexture(const std::string &cacheKey,
+                                                         const std::string &text,
+                                                         const SDL_Color &color,
+                                                         int wrapWidth,
+                                                         int &outW,
+                                                         int &outH) {
+    if (wrapWidth <= 0)
+        return getTextTexture(cacheKey, text, color, outW, outH);
+
+    const std::string wrappedKey = makeTextCacheKey("wrapped:", cacheKey, text, color, wrapWidth);
+    auto it = textCache_.find(wrappedKey);
+    if (it != textCache_.end()) {
+        outW = it->second.width;
+        outH = it->second.height;
+        return it->second.texture;
+    }
+
+    if (!listFont_) {
+        outW = outH = 0;
+        return nullptr;
+    }
+
+    SDL_Surface *surf =
+        TTF_RenderUTF8_Blended_Wrapped(listFont_, text.c_str(), color,
+                                       static_cast<Uint32>(wrapWidth));
+    if (!surf) {
+        outW = outH = 0;
+        return nullptr;
+    }
+
+    SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer_, surf);
+    if (!tex) {
+        SDL_FreeSurface(surf);
+        outW = outH = 0;
+        return nullptr;
+    }
+
+    TextCacheEntry entry;
+    entry.texture = tex;
+    entry.width = surf->w;
+    entry.height = surf->h;
+    textCache_[wrappedKey] = entry;
 
     outW = entry.width;
     outH = entry.height;

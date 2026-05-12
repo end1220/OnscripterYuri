@@ -37,6 +37,12 @@ public:
                                 const SDL_Color &color,
                                 int &outW,
                                 int &outH);
+    SDL_Texture *getWrappedTextTexture(const std::string &cacheKey,
+                                       const std::string &text,
+                                       const SDL_Color &color,
+                                       int wrapWidth,
+                                       int &outW,
+                                       int &outH);
 
 private:
     struct TextCacheEntry {

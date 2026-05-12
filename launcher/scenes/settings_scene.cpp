@@ -274,7 +274,7 @@ void SettingsScene::draw(const LauncherSceneRenderContext &ctx) {
 
     if (focusedButton_ == 1) {
         drawAuthorProfile(ctx, panel);
-    } else {
+    } else if (focusedButton_ == 2) {
         drawSimulatorHelpPanel(ctx, panel);
     }
 
@@ -417,33 +417,31 @@ void SettingsScene::drawSimulatorHelpPanel(const LauncherSceneRenderContext &ctx
                                            const SDL_Rect &panel) {
     const int areaLeft = panel.x + panel.w / 2 - 116;
     const int areaTop = panel.y + panel.h / 6;
+    const int areaRight = panel.x + panel.w - 40;
+    const int areaWidth = areaRight - areaLeft;
     const SDL_Color &color = LauncherTheme::settingsText();
 
-    static constexpr int kLineStep = 28;
     int y = areaTop;
     if (focusedButton_ == 2) {
         drawTextAt(ctx, "settings_about_device_banner", LauncherTheme::kSettingsAboutDeviceBannerText,
                    LauncherTheme::gameNameSelected(), areaLeft, y, 0.88f, 1);
-        y += kLineStep;
+        y += 30;
     }
 
     drawTextAt(ctx, "settings_help_title", LauncherTheme::kSettingsHelpTitleText, color, areaLeft, y,
                1.0f, 1);
-    y += 34;
-    drawTextAt(ctx, "settings_help_line1", LauncherTheme::kSettingsHelpLine1Text, color, areaLeft, y,
-               0.85f, 0);
-    y += kLineStep;
-    drawTextAt(ctx, "settings_help_line3", LauncherTheme::kSettingsHelpLine3Text, color, areaLeft, y,
-               0.85f, 0);
-    y += kLineStep;
-    drawTextAt(ctx, "settings_help_line3_ptr", LauncherTheme::kSettingsHelpLine3PointerText, color,
-               areaLeft, y, 0.85f, 0);
-    y += kLineStep;
-    drawTextAt(ctx, "settings_help_line5", LauncherTheme::kSettingsHelpLine5Text, color, areaLeft, y,
-               0.85f, 0);
-    y += kLineStep;
-    drawTextAt(ctx, "settings_help_line6", LauncherTheme::kSettingsHelpLine6Text, color, areaLeft, y,
-               0.78f, 0);
+    y += 36;
+
+    std::string body = LauncherTheme::kSettingsHelpBodyText;
+    body += "\n";
+    body += LauncherTheme::kSettingsAboutFooterText;
+    if (focusedButton_ == 2) {
+        body += "\n";
+        body += LauncherTheme::kSettingsVersionText;
+    }
+
+    drawWrappedTextBlock(ctx, "settings_help_body", body.c_str(), color, areaLeft, y, areaWidth,
+                         0.82f, 0);
 }
 
 void SettingsScene::drawTextAt(const LauncherSceneRenderContext &ctx, const char *cacheKey,
@@ -482,6 +480,54 @@ void SettingsScene::drawTextAt(const LauncherSceneRenderContext &ctx, const char
 
     SDL_Rect dst = {leftX, y, drawW, drawH};
     SDL_RenderCopy(ctx.renderer, tex, nullptr, &dst);
+}
+
+int SettingsScene::drawWrappedTextBlock(const LauncherSceneRenderContext &ctx, const char *cacheKey,
+                                        const char *text, const SDL_Color &color, int leftX, int y,
+                                        int maxWidth, float scale, int shadowOffset) {
+    if (maxWidth <= 0 || scale <= 0.0f)
+        return 0;
+
+    int wrapWidth = static_cast<int>(maxWidth / scale);
+    if (wrapWidth <= 0)
+        wrapWidth = maxWidth;
+
+    int textW = 0;
+    int textH = 0;
+    SDL_Texture *tex =
+        ctx.textureCache.getWrappedTextTexture(cacheKey, text, color, wrapWidth, textW, textH);
+    if (!tex)
+        return 0;
+
+    int drawW = static_cast<int>(textW * scale);
+    int drawH = static_cast<int>(textH * scale);
+    if (drawW <= 0)
+        drawW = textW;
+    if (drawH <= 0)
+        drawH = textH;
+
+    if (shadowOffset > 0) {
+        int sw = 0;
+        int sh = 0;
+        std::string shadowKey = std::string(cacheKey) + "_shadow";
+        SDL_Color shadowColor = {0, 0, 0, 255};
+        SDL_Texture *shadow =
+            ctx.textureCache.getWrappedTextTexture(shadowKey, text, shadowColor, wrapWidth, sw, sh);
+        if (shadow) {
+            int shadowW = static_cast<int>(sw * scale);
+            int shadowH = static_cast<int>(sh * scale);
+            if (shadowW <= 0)
+                shadowW = sw;
+            if (shadowH <= 0)
+                shadowH = sh;
+            SDL_Rect shadowDst = {leftX + shadowOffset, y + shadowOffset, shadowW, shadowH};
+            SDL_RenderCopy(ctx.renderer, shadow, nullptr, &shadowDst);
+        }
+    }
+
+    SDL_Rect dst = {leftX, y, drawW, drawH};
+    SDL_RenderCopy(ctx.renderer, tex, nullptr, &dst);
+    return drawH;
 }
 
 void SettingsScene::drawText(const LauncherSceneRenderContext &ctx, const char *cacheKey,
