@@ -120,6 +120,16 @@ int launchGame(const Options &opt, const GameEntry &game) {
         args.push_back(&s[0]);
     args.push_back(nullptr);
 
+    // 引擎 readScript() 从进程 CWD 读取 0.txt 等，需先进入游戏目录
+    std::string gameDir = game.path;
+    while (!gameDir.empty() && gameDir.back() == '/')
+        gameDir.pop_back();
+    if (!gameDir.empty() && chdir(gameDir.c_str()) != 0) {
+        std::perror("chdir game dir");
+        std::fprintf(stderr, "[Launcher] launchGame: FAILED chdir to %s\n", gameDir.c_str());
+        return 1;
+    }
+
     execv(opt.onsyuriPath.c_str(), args.data());
     std::perror("execv onscripter");
     std::fprintf(stderr, "[Launcher] launchGame: FAILED execv onscripter\n");
