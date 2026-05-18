@@ -49,7 +49,7 @@ const char *LauncherTheme::kSettingsHelpBodyText =
     "  Select + Start可强制退出程序";
 const char *LauncherTheme::kSettingsAboutFooterText =
     "OnscripterYuri项目：\nhttps://github.com/YuriSizuku/OnscripterYuri";
-const char *LauncherTheme::kSettingsVersionText = "版本：2.0.0";
+const char *LauncherTheme::kSettingsVersionText = "版本：2.1.0";
 const char *LauncherTheme::kSettingsAboutDeviceBannerText = "Miniloong掌机专用";
 const char *LauncherTheme::kSettingsSignatureText = "菜 单";
 const char *LauncherTheme::kGridSelectedBgImage = "data/cell_light.png";
