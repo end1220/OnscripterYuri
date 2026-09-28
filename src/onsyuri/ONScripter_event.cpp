@@ -1300,12 +1300,72 @@ void ONScripter::runEventLoop()
             flushPointerCursor(&old_cursor_rect);
         }
     };
-    auto exitPointerModeForPhysicalDpad = [&]() {
-        if (input_mode != INPUT_MODE_POINTER)
-            return;
+    auto togglePointerMode = [&]() {
         SDL_Rect old_cursor_rect = cursor_info[0].pos;
-        input_mode = INPUT_MODE_TRADITIONAL;
+        if (input_mode == INPUT_MODE_POINTER) {
+            input_mode = INPUT_MODE_TRADITIONAL;
+            flushPointerCursor(&old_cursor_rect);
+        } else {
+            syncPointerFromCurrentState();
+            input_mode = INPUT_MODE_POINTER;
+            last_left_stick_active_ms = SDL_GetTicks();
+            updatePointerCursorSprite();
+            flushPointerCursor(&old_cursor_rect);
+        }
+    };
+    static int dpad_pointer_step = 3;
+    auto drivePointerByDpad = [&](int dir_x, int dir_y) -> bool {
+        if (dir_x == 0 && dir_y == 0) {
+            dpad_pointer_step = 3;
+            return false;
+        }
+        if (dpad_pointer_step < 3) dpad_pointer_step = 3;
+        if (dpad_pointer_step > pointer_axis_max_step)
+            dpad_pointer_step = pointer_axis_max_step;
+        int dx = dir_x * dpad_pointer_step;
+        int dy = dir_y * dpad_pointer_step;
+        if (dpad_pointer_step < pointer_axis_max_step)
+            dpad_pointer_step++;
+
+        last_left_stick_active_ms = SDL_GetTicks();
+
+        SDL_Rect old_cursor_rect = cursor_info[0].pos;
+        pointer_cursor_x += dx;
+        pointer_cursor_y += dy;
+        clampScriptPointer(pointer_cursor_x, pointer_cursor_y);
+        updatePointerCursorSprite();
         flushPointerCursor(&old_cursor_rect);
+
+        SDL_MouseMotionEvent mevent;
+        SDL_memset(&mevent, 0, sizeof(mevent));
+        mevent.x = pointer_cursor_x;
+        mevent.y = pointer_cursor_y;
+        return mouseMoveEvent(&mevent);
+    };
+    auto pollDpadPointerMove = [&]() -> bool {
+        if (input_mode != INPUT_MODE_POINTER)
+            return false;
+        SDL_JoystickUpdate();
+        int dir_x = 0, dir_y = 0;
+        if (controller != NULL) {
+            if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_LEFT))
+                dir_x -= 1;
+            if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_RIGHT))
+                dir_x += 1;
+            if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_UP))
+                dir_y -= 1;
+            if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_DOWN))
+                dir_y += 1;
+        } else if (joystick != NULL && SDL_JoystickNumHats(joystick) > 0) {
+            Uint8 hat = SDL_JoystickGetHat(joystick, 0);
+            if (hat & SDL_HAT_LEFT) dir_x -= 1;
+            if (hat & SDL_HAT_RIGHT) dir_x += 1;
+            if (hat & SDL_HAT_UP) dir_y -= 1;
+            if (hat & SDL_HAT_DOWN) dir_y += 1;
+        } else {
+            return false;
+        }
+        return drivePointerByDpad(dir_x, dir_y);
     };
     auto drivePointerByCurrentStick = [&]() -> bool {
         /* Read live axis state: cached values from last event can stay non-zero briefly
@@ -1359,6 +1419,13 @@ void ONScripter::runEventLoop()
         for (int i = 0; i < count; i++) {
             Uint8 now = SDL_JoystickGetButton(joystick, i);
             if (now == polled_button_state[i]) continue;
+            /* SELECT (btn 8): toggle pointer mode on press edge */
+            if (i == 8) {
+                if (now != 0)
+                    togglePointerMode();
+                polled_button_state[i] = now;
+                continue;
+            }
             ONS_Key mapped = transJoystickButton((Uint8)i);
             if (input_mode == INPUT_MODE_POINTER) markPointerInteraction();
             if (input_mode == INPUT_MODE_POINTER && i == 1) {
@@ -1389,6 +1456,7 @@ void ONScripter::runEventLoop()
     while ( true ) {
         if (!SDL_WaitEventTimeout(&event, 16)) {
             if (drivePointerByCurrentStick()) return;
+            if (pollDpadPointerMove()) return;
             updatePointerIdleMode();
             if (pollJoystickButtons()) return;
             continue;
@@ -1525,6 +1593,11 @@ void ONScripter::runEventLoop()
           case SDL_JOYBUTTONDOWN:
             use_polled_joystick_buttons = false;
             if (joystick != NULL && event.jbutton.which == SDL_JoystickInstanceID(joystick)) {
+                /* SELECT (btn 8): toggle pointer mode; do not forward as TAB */
+                if (event.jbutton.button == 8) {
+                    togglePointerMode();
+                    break;
+                }
                 if (input_mode == INPUT_MODE_POINTER)
                     markPointerInteraction(event.jbutton.timestamp);
                 if (input_mode == INPUT_MODE_POINTER && event.jbutton.button == 1) {
@@ -1546,6 +1619,9 @@ void ONScripter::runEventLoop()
           case SDL_JOYBUTTONUP:
             use_polled_joystick_buttons = false;
             if (joystick != NULL && event.jbutton.which == SDL_JoystickInstanceID(joystick)) {
+                /* SELECT (btn 8): absorb release; toggle already handled on press */
+                if (event.jbutton.button == 8)
+                    break;
                 if (input_mode == INPUT_MODE_POINTER)
                     markPointerInteraction(event.jbutton.timestamp);
                 if (input_mode == INPUT_MODE_POINTER && event.jbutton.button == 1) {
@@ -1568,11 +1644,13 @@ void ONScripter::runEventLoop()
             if (joystick != NULL && event.jhat.which == SDL_JoystickInstanceID(joystick) && event.jhat.hat == 0) {
                 static Uint8 prev_hat = 0;
                 Uint8 hat = event.jhat.value;
+                /* Pointer mode: D-pad drives cursor via pollDpadPointerMove; skip key events. */
+                if (input_mode == INPUT_MODE_POINTER) {
+                    prev_hat = hat;
+                    break;
+                }
                 auto dpadKey = [&](Uint8 mask, ONS_Key k) {
                     if ((hat & mask) != (prev_hat & mask)) {
-                        if (input_mode == INPUT_MODE_POINTER && (hat & mask) &&
-                            (k == SDLK_UP || k == SDLK_DOWN || k == SDLK_LEFT || k == SDLK_RIGHT))
-                            exitPointerModeForPhysicalDpad();
                         SDL_Event kev;
                         kev.key.keysym.sym = transKey(k);
                         kev.key.keysym.mod = 0;
@@ -1679,12 +1757,18 @@ void ONScripter::runEventLoop()
             break;
 
           case SDL_CONTROLLERBUTTONDOWN:
+            /* SELECT/BACK: toggle pointer mode; do not forward as text-speed key */
+            if (event.cbutton.button == SDL_CONTROLLER_BUTTON_BACK) {
+                togglePointerMode();
+                break;
+            }
+            /* Pointer mode: D-pad drives cursor via pollDpadPointerMove */
             if (input_mode == INPUT_MODE_POINTER &&
                 (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP ||
                  event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_DOWN ||
                  event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT ||
                  event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT)) {
-                exitPointerModeForPhysicalDpad();
+                break;
             }
             if (input_mode == INPUT_MODE_POINTER)
                 markPointerInteraction(event.cbutton.timestamp);
@@ -1709,6 +1793,15 @@ void ONScripter::runEventLoop()
             break;
 
           case SDL_CONTROLLERBUTTONUP:
+            if (event.cbutton.button == SDL_CONTROLLER_BUTTON_BACK)
+                break;
+            if (input_mode == INPUT_MODE_POINTER &&
+                (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP ||
+                 event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_DOWN ||
+                 event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT ||
+                 event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT)) {
+                break;
+            }
             if (input_mode == INPUT_MODE_POINTER)
                 markPointerInteraction(event.cbutton.timestamp);
             if (input_mode == INPUT_MODE_POINTER &&
@@ -1852,6 +1945,7 @@ void ONScripter::runEventLoop()
             break;
         }
         if (drivePointerByCurrentStick()) return;
+        if (pollDpadPointerMove()) return;
         updatePointerIdleMode();
         if (pollJoystickButtons()) return;
     }

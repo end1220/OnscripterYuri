@@ -61,7 +61,7 @@ globs:
 
 ### 掌机摇杆指针模式
 
-- Linux 掌机的左摇杆逻辑指针、A/B 语义、空闲隐藏、D-pad 退出和动画卡顿风险，详见 `.cursor/rules/input/handheld-pointer-mode.mdc`。
+- Linux 掌机的左摇杆逻辑指针、SELECT 切换显示/隐藏、十字键移动、A/B 语义、5 秒空闲隐藏，详见 `.cursor/rules/input/handheld-pointer-mode.mdc`。
 - 修改 `runEventLoop()` 内指针相关 lambda 或 `mousePressEvent` / `mouseMoveEvent` / `refreshMouseOverButton` 时，应同步核对 `摇杆与指针模式问题总结.md` 中的实机现象。
 
 ### 触摸（`IOS` / `ANDROID` / `WINRT`）

@@ -10,26 +10,28 @@ globs:
 
 # 摇杆光标指针模式（最终实现）
 
-面向 Linux 掌机（常无物理鼠标、Wayland）：左摇杆驱动引擎内逻辑坐标 `pointer_cursor_x/y`，自绘光标贴图；与传统手柄方向键/键盘路径并存。
+面向 Linux 掌机（常无物理鼠标、Wayland）：左摇杆或 SELECT 进入引擎内逻辑坐标 `pointer_cursor_x/y`，自绘光标贴图；十字键在指针模式下移动光标；与传统手柄方向键/键盘路径并存。
 
 ## 状态与默认值
 
 - `input_mode`：`INPUT_MODE_TRADITIONAL` | `INPUT_MODE_POINTER`
 - `pointer_cursor_x/y`：脚本分辨率下的逻辑指针，移动时钳制在 `[0, screen_width-1]` × `[0, screen_height-1]`
 - `pointer_axis_deadzone`：轴死区约 20%（32767 基准）
-- `pointer_axis_max_step`：`ONScripter` 构造函数里设为 **15**（摇杆推满时每帧最大像素步进上限）
+- `pointer_axis_max_step`：`ONScripter` 构造函数里设为 **15**（摇杆推满 / 十字键加速时每帧最大像素步进上限）
 - `pointer_idle_timeout_ms`：5000；`last_left_stick_active_ms` 用于空闲退出指针模式
 
 `resetSub()` 会把 `pointer_cursor_*` 与 `current_button_state.x/y` 一并设为 **屏幕中心**，避免首次进入指针模式时被旧的 `current_button_state` 拉偏。
 
 ## 生命周期（均在 `runEventLoop()` 内 lambda）
 
-1. **进入指针模式**：左摇杆超出死区 → `input_mode = INPUT_MODE_POINTER`；若刚从传统模式切入，先 `syncPointerFromCurrentState()`（从当前 `current_button_state` 对齐指针），并刷新空闲计时。
-2. **移动**：`drivePointerByCurrentStick()` 每轮 `SDL_JoystickUpdate()` 后读 **实时轴**（优先 `SDL_GameControllerGetAxis`，否则 `SDL_JoystickGetAxis` 轴 0/1），经死区、`axisToStep`、可选矢量尾部 snap 后更新 `pointer_cursor_*`，再 `mouseMoveEvent` 合成坐标（`WAIT_BUTTON_MODE` 下仍会走原有悬停逻辑）。
-3. **空闲退出**：`updatePointerIdleMode()` 超时则回到传统模式并刷新光标区域。
-4. **实体十字键退出**：`SDL_JOYHATMOTION` 与 `SDL_CONTROLLER_BUTTON_DPAD_*` 触发 `exitPointerModeForPhysicalDpad()`。
+1. **进入指针模式**：
+   - 左摇杆超出死区 → `input_mode = INPUT_MODE_POINTER`；若刚从传统模式切入，先 `syncPointerFromCurrentState()`，并刷新空闲计时。
+   - **SELECT 切换**：`togglePointerMode()` — GameController 的 `SDL_CONTROLLER_BUTTON_BACK`，或 Raw Joystick 按钮索引 `8`（含 `pollJoystickButtons` 边沿）。按下切换，抬起吸收，**不再**转发为 `SDLK_0` / `SDLK_TAB`。
+2. **摇杆移动**：`drivePointerByCurrentStick()` 每轮读实时轴，经死区、`axisToStep`、矢量尾部 snap 后更新 `pointer_cursor_*`，再 `mouseMoveEvent`。
+3. **十字键移动**：指针模式下 `pollDpadPointerMove()` 读实时 D-pad（优先 `SDL_GameControllerGetButton(DPAD_*)`，否则 `SDL_JoystickGetHat`），`drivePointerByDpad` 步进起步 3、每帧 +1、上限 `pointer_axis_max_step`。指针模式下 HAT / DPAD 事件**不**转发方向键，也**不再**用 D-pad 退出指针模式。
+4. **空闲退出**：`updatePointerIdleMode()` 超时则回到传统模式并刷新光标区域。SELECT 再次按下也可手动退出。
 
-摇杆有位移或指针模式下有交互时通过 `markPointerInteraction()` 刷新 `last_left_stick_active_ms`（含合成点击、手柄按键轮询等）。
+摇杆位移、十字键移动、SELECT 进入、合成点击或指针模式下其它交互时刷新 `last_left_stick_active_ms`（含 `markPointerInteraction()`）。
 
 ## 合成左键与悬停
 
@@ -43,7 +45,7 @@ globs:
 
 在 Nintendo 类物理布局上，SDL 抽象键位与壳子标注常见错位：**合成左键绑定在 `SDL_CONTROLLER_BUTTON_B`**（对应多数设备上的物理 A）。其余键仍经 `transControllerButton()` 走键盘路径。
 
-Raw Joystick（Loong 表注释 `0=B 1=A …`）：指针模式下 **固定用按钮索引 `1`** 触发 `pointerLeftClick`（事件分支与 `pollJoystickButtons` 轮询一致）。
+Raw Joystick（Loong 表注释 `0=B 1=A … 8=SELECT`）：指针模式下 **固定用按钮索引 `1`** 触发 `pointerLeftClick`；按钮 `8` 专用于 `togglePointerMode`（事件分支与 `pollJoystickButtons` 一致）。
 
 `transControllerButton()` 仍将 **GUIDE** 映射为 `SDLK_F10`；**已不再**在 `keyPressEvent()` 的 `KEYUP` 分支用 F10 切换全屏（避免 Menu/GUIDE 误触）。桌面仍可用 **Alt+Return** 切换全屏。
 
@@ -54,5 +56,5 @@ Raw Joystick（Loong 表注释 `0=B 1=A …`）：指针模式下 **固定用按
 
 ## 修改时注意
 
-- 改确认键或映射时同时核对 GameController 与 Raw Joystick 两条路径，以及 `pollJoystickButtons` 特判。
+- 改确认键、SELECT 切换或映射时同时核对 GameController 与 Raw Joystick 两条路径，以及 `pollJoystickButtons` 特判。
 - `refreshMouseOverButton()` 仍用系统鼠标坐标；逻辑指针场景依赖移动/点击路径里的 `mouseOverCheck`，不要轻易假定 OS 指针与 `pointer_cursor_*` 一致。
