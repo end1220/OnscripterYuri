@@ -24,8 +24,8 @@ FONT="$GAME_DIR/default.ttf"
 # ========== 启动参数 ==========
 # 全屏拉伸模式（F10 切换），适配掌机屏幕
 # --fullscreen2 全屏拉伸
-# --sharpness 锐化（可选，如 3.1）
-OPTS="--fullscreen2 --sharpness 3.1"
+# --sharpness 锐化（0.0~1.0，越大越锐）
+OPTS="--fullscreen2 --sharpness 0.4"
 
 # ========== 启动 ==========
 if [ ! -x "$ONSYURI" ]; then

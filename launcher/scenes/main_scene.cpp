@@ -9,10 +9,9 @@ void MainScene::onEnter() {
 void MainScene::handleEvent(const SDL_Event &event, LauncherSceneInputContext &ctx) {
     static constexpr Uint8 BTN_B = 0;
     static constexpr Uint8 BTN_A = 1;
-    static constexpr Uint8 BTN_MENU = 10;
 
     if (event.type == SDL_CONTROLLERBUTTONDOWN) {
-        if (event.cbutton.button == BTN_MENU) {
+        if (event.cbutton.button == SDL_CONTROLLER_BUTTON_GUIDE) {
             ctx.action.switchTo = LauncherSceneTarget::kSettings;
             return;
         }
@@ -39,7 +38,7 @@ void MainScene::handleEvent(const SDL_Event &event, LauncherSceneInputContext &c
         menuInput_.handleJoyHatMotion(event.jhat.value, ctx.selected, ctx.count);
     } else if (event.type == SDL_JOYBUTTONDOWN) {
         int btn = event.jbutton.button;
-        if (btn == BTN_MENU) {
+        if (btn == ctx.menuJoyButton) {
             ctx.action.switchTo = LauncherSceneTarget::kSettings;
         } else if (btn == BTN_B) {
             if (ctx.count > 0)

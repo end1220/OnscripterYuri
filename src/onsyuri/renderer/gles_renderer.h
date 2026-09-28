@@ -59,7 +59,7 @@ class GlesRenderer {
 	GLuint createShader(GLenum shader_type, const GLchar* shader_src);
 	void initVertexData();
 public:
-	GlesRenderer(SDL_Window *window, SDL_Texture *texture, const float input_size[2], const float output_size[2], float sharpness);
+	GlesRenderer(SDL_Window *window, SDL_Texture *texture, const float input_size[2], const float output_size[2], float sharpness, bool swap_rb = true);
 	~GlesRenderer();
 
 	void copy(const int window_x, const int window_y);

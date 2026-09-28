@@ -26,6 +26,7 @@
 #include "ONScripter.h"
 #include "Utils.h"
 #include "coding2utf16.h"
+#include "sys_volume.h"
 #ifdef USE_FONTCONFIG
 #include <fontconfig/fontconfig.h>
 #endif
@@ -167,11 +168,22 @@ void ONScripter::initSDL()
 #endif
     if(SDL_InitSubSystem( SDL_INIT_GAMECONTROLLER ) == 0)
         utils::printInfo("Initialize GameController\n");
+#if !defined(ANDROID) && !defined(WEB)
+    /* 与 ons_launcher 共用同目录的 gamecontrollerdb.txt，未收录 SDL 内置库的掌机按位置映射 A/B */
+    if (char *base = SDL_GetBasePath()) {
+        std::string dbPath = std::string(base) + "gamecontrollerdb.txt";
+        SDL_free(base);
+        int n = SDL_GameControllerAddMappingsFromFile(dbPath.c_str());
+        if (n >= 0)
+            utils::printInfo("Loaded %d controller mappings from %s\n", n, dbPath.c_str());
+    }
+#endif
     utils::printInfo("SDL_NumJoysticks at init: %d\n", SDL_NumJoysticks());
     controller = SDL_GameControllerOpen(0);
     joystick = NULL;
     if(controller != NULL) {
-        utils::printInfo("GameController found\n");
+        utils::printInfo("GameController found: %s\n",
+                         SDL_GameControllerName(controller) ? SDL_GameControllerName(controller) : "unknown");
     } else if (SDL_NumJoysticks() > 0) {
         joystick = SDL_JoystickOpen(0);
         if (joystick != NULL) {
@@ -311,6 +323,11 @@ void ONScripter::initSDL()
         max_texture_height = 2048;
     }
 
+    utils::printInfo("Renderer: %s, texture_format=%s (preferred=%s)\n",
+                     info.name ? info.name : "(null)",
+                     texture_format == SDL_PIXELFORMAT_ABGR8888 ? "ABGR8888" : "ARGB8888",
+                     info.num_texture_formats > 0 ? SDL_GetPixelFormatName(info.texture_formats[0]) : "(none)");
+
     SDL_RenderClear(renderer);
 
     underline_value = script_h.screen_height;
@@ -335,7 +352,9 @@ void ONScripter::initSDL()
 #if defined(USE_GLES)
         float input_size[2] = {(float)screen_width, (float)screen_height};
         float output_size[2] = {(float)render_view_rect.w, (float)render_view_rect.h};
-        gles_renderer = new GlesRenderer(window, texture, input_size, output_size, sharpness);
+        /* ARGB8888 needs RB swap in CAS; ABGR8888 already matches GL_RGBA byte order. */
+        bool swap_rb = (texture_format != SDL_PIXELFORMAT_ABGR8888);
+        gles_renderer = new GlesRenderer(window, texture, input_size, output_size, sharpness, swap_rb);
 #endif
     }
     
@@ -379,6 +398,7 @@ void ONScripter::openAudio(int freq)
 
         Mix_AllocateChannels( ONS_MIX_CHANNELS+ONS_MIX_EXTRA_CHANNELS );
         Mix_ChannelFinished( waveCallback );
+        sys_volume::attachMixer();
     }
 }
 

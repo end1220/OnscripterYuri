@@ -108,7 +108,6 @@ void SettingsScene::confirmFocused(LauncherSceneAction &action) {
 void SettingsScene::handleEvent(const SDL_Event &event, LauncherSceneInputContext &ctx) {
     static constexpr Uint8 BTN_B = 0;
     static constexpr Uint8 BTN_A = 1;
-    static constexpr Uint8 BTN_MENU = 10;
 
     if (event.type == SDL_KEYDOWN) {
         switch (event.key.keysym.sym) {
@@ -141,7 +140,7 @@ void SettingsScene::handleEvent(const SDL_Event &event, LauncherSceneInputContex
             break;
         }
     } else if (event.type == SDL_CONTROLLERBUTTONDOWN) {
-        if (event.cbutton.button == BTN_MENU) {
+        if (event.cbutton.button == SDL_CONTROLLER_BUTTON_GUIDE) {
             ctx.action.switchTo = LauncherSceneTarget::kMain;
             return;
         }
@@ -208,7 +207,7 @@ void SettingsScene::handleEvent(const SDL_Event &event, LauncherSceneInputContex
         }
     } else if (event.type == SDL_JOYBUTTONDOWN) {
         int btn = event.jbutton.button;
-        if (btn == BTN_MENU) {
+        if (btn == ctx.menuJoyButton) {
             ctx.action.switchTo = LauncherSceneTarget::kMain;
         } else if (btn == BTN_B) {
             confirmFocused(ctx.action);

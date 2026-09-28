@@ -79,7 +79,7 @@ You can also put these option in `ons_args` file.
 ``` bash
 ./onsyuri --help
 ./onsyuri --root /path/to/game --save-dir /path/to/save --font /path/default.ttf --enc:sjis
-./onsyuri --width 1280 --height 720 --sharpness=3.1
+./onsyuri --width 1280 --height 720 --sharpness=0.4
 ./onsyuri --fullscreen2 # fullscreen1 alt+f, fullscreen2 f10 (toggle stretch)
 
 Usage: onsyuri [option ...]
@@ -99,7 +99,7 @@ Usage: onsyuri [option ...]
       --height 720      force window height
       --fullscreen      start in fullscreen mode (alt+f or alt+enter)
       --fullscreen2     start in fullscreen mode with stretch (f10 to toggle stretch)
-      --sharpness 3.1    use gles to make image sharp
+      --sharpness 0.4    use gles CAS sharpen (0.0~1.0)
       --no-video        do not decode video
       --no-vsync        turn off vsync
 

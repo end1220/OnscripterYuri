@@ -40,6 +40,8 @@ private:
     TTF_Font *font_ = nullptr;
     SDL_GameController *controller_ = nullptr;
     SDL_Joystick *joystick_ = nullptr;
+    enum { kRawMenuButtonFallback = 10 };
+    int menuJoyButton_ = kRawMenuButtonFallback;
     std::string fontPath_;
 
     LauncherTextureCache textureCache_;

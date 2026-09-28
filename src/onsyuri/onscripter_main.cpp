@@ -71,7 +71,7 @@ void optionHelp()
     printf( "      --height 720\tforce window height\n");
     printf( "      --fullscreen\tstart in fullscreen mode (alt+f or alt+enter)\n");
     printf( "      --fullscreen2\tstart in fullscreen mode with stretch (f10 toggle stretch)\n");
-    printf( "      --sharpness 3.1 \t use gles to make image sharp\n");
+    printf( "      --sharpness 0.4 \t use gles CAS sharpen (0.0~1.0)\n");
     printf( "      --no-video\tdo not decode video\n");
     printf( "      --no-vsync\tturn off vsync\n\n");
     

@@ -15,7 +15,7 @@ bool MenuUI::shouldIgnoreJoystickInputEvent(const SDL_Event &event) const {
     case SDL_JOYBUTTONDOWN:
     case SDL_JOYBUTTONUP: {
         // 某些掌机会把同一物理键同时上报为 Controller + Joystick。
-        // 仅屏蔽易冲突的 A/B（0/1）重复事件，保留 Menu(10) 等专用按键。
+        // 仅屏蔽易冲突的 A/B（0/1）重复事件，保留 Menu 等专用按键。
         const Uint8 btn = event.jbutton.button;
         return (btn == 0 || btn == 1);
     }
@@ -109,9 +109,22 @@ bool MenuUI::init(const std::string &fontPath, const std::string &launcherDataDi
 
     const char *path = fontPath_.empty() ? "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
                                          : fontPath_.c_str();
+    // 各品牌手柄映射放在 launcher 目录的 gamecontrollerdb.txt（SDL 标准格式），须在打开设备前加载
+    std::string dbPath = launcherDataDir.empty() ? "gamecontrollerdb.txt"
+                                                 : (launcherDataDir + "/gamecontrollerdb.txt");
+    int mappingCount = SDL_GameControllerAddMappingsFromFile(dbPath.c_str());
+    if (mappingCount < 0)
+        std::fprintf(stderr, "[Launcher] No controller mappings loaded from %s: %s\n",
+                     dbPath.c_str(), SDL_GetError());
+    else
+        std::fprintf(stderr, "[Launcher] Loaded %d controller mappings from %s\n", mappingCount,
+                     dbPath.c_str());
+
     SDL_JoystickEventState(SDL_ENABLE);
     if (SDL_NumJoysticks() > 0)
         openDevice(0);
+    else
+        std::fprintf(stderr, "[Launcher] Controller: none detected at startup\n");
 
     SDL_SetRenderDrawBlendMode(renderer_, SDL_BLENDMODE_BLEND);
 
@@ -145,6 +158,33 @@ void MenuUI::openDevice(int index) {
     } else {
         joystick_ = SDL_JoystickOpen(index);
         (void)joystick_;
+    }
+
+    // 映射里绑定了 GUIDE 就只认 GUIDE；否则退回旧行为，把原始按键 10 当 MENU
+    bool hasGuide = false;
+    if (controller_) {
+        SDL_GameControllerButtonBind bind =
+            SDL_GameControllerGetBindForButton(controller_, SDL_CONTROLLER_BUTTON_GUIDE);
+        hasGuide = bind.bindType != SDL_CONTROLLER_BINDTYPE_NONE;
+    }
+    menuJoyButton_ = hasGuide ? -1 : kRawMenuButtonFallback;
+
+    const char *joyName = SDL_JoystickNameForIndex(index);
+    const char *ctrlName = controller_ ? SDL_GameControllerName(controller_) : nullptr;
+    char guid[33] = {0};
+    SDL_JoystickGetGUIDString(SDL_JoystickGetDeviceGUID(index), guid, sizeof(guid));
+    std::fprintf(stderr,
+                 "[Launcher] Controller: \"%s\" (joystick name \"%s\", guid %s, %s), menu=%s\n",
+                 ctrlName ? ctrlName : (joyName ? joyName : "unknown"),
+                 joyName ? joyName : "unknown", guid,
+                 controller_ ? "game controller" : "raw joystick",
+                 hasGuide ? "GUIDE" : "raw button 10");
+    if (controller_) {
+        char *mapping = SDL_GameControllerMapping(controller_);
+        if (mapping) {
+            std::fprintf(stderr, "[Launcher] Controller mapping: %s\n", mapping);
+            SDL_free(mapping);
+        }
     }
 }
 
@@ -237,6 +277,7 @@ int MenuUI::run(const std::vector<GameEntry> &games) {
                 continue;
             } else {
                 LauncherSceneInputContext inputCtx = {games, selected, count, action};
+                inputCtx.menuJoyButton = menuJoyButton_;
                 sceneManager_->currentScene().handleEvent(e, inputCtx);
             }
         }

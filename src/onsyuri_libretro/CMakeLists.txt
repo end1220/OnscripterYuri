@@ -38,6 +38,7 @@ set(SOURCES
   ../onsyuri/ScriptParser.cpp
   ../onsyuri/ScriptParser_command.cpp
   ../onsyuri/sjis2utf16.cpp
+  ../onsyuri/sys_volume.cpp
   ../onsyuri/renderer/gles_renderer.cpp
   ../onsyuri/builtin_dll/layer_oldmovie.cpp
   ../onsyuri/builtin_dll/layer_snow.cpp

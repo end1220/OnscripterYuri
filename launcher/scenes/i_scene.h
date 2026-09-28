@@ -29,6 +29,8 @@ struct LauncherSceneInputContext {
     int &selected;
     int count;
     LauncherSceneAction &action;
+    // 作为 MENU 的原始 Joystick 按键号；-1 表示设备映射了 GUIDE，不再认原始按键
+    int menuJoyButton = -1;
 };
 
 struct LauncherSceneRenderContext {

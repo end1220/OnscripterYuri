@@ -25,5 +25,5 @@ fi
     --font "$LAUNCHER_DIR/font.ttf" \
     --launcher-data-dir "$LAUNCHER_DIR" \
     --windowed 400 300 \
-    --pass-arg "--fullscreen2" --pass-arg "--sharpness" --pass-arg "9.1" \
+    --pass-arg "--fullscreen2" --pass-arg "--sharpness" --pass-arg "0.4" \
     "$@" >"$ONS_DIR/log0.txt" 2>&1

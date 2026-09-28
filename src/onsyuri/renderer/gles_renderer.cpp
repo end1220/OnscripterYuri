@@ -22,6 +22,7 @@
 #include "gles_renderer.h"
 #include "../Utils.h"
 #include "shader/post_cas.h"
+#include <string>
 
 #if (defined(IOS) || defined(ANDROID))
 #include <GLES2/gl2.h>
@@ -50,8 +51,9 @@ static void casSetup(GLfloat con[4*2], float sharpness, const float inputSizeInP
     con[1] = inputSizeInPixels[1] * (1.0f / outputSizeInPixels[1]);
     con[2] = 0.5f * inputSizeInPixels[0] * (1.0f / outputSizeInPixels[0]) - 0.5f;
     con[3] = 0.5f * inputSizeInPixels[1] * (1.0f / outputSizeInPixels[1]) - 0.5f;
-    // Sharpness value.
-    const float sharp = 1.0f / (8.0f - sharpness * 3.0f);
+    // Sharpness value (AMD FidelityFX CAS: negative weight = sharpen).
+    // sharpness 0 → -1/8, sharpness 1 → -1/5.
+    const float sharp = -1.0f / (8.0f - sharpness * 3.0f);
     con[4] = con[5] = sharp;
     con[6] = 8.0f * inputSizeInPixels[0] * (1.0f / outputSizeInPixels[0]);
     con[7] = inputSizeInPixels[1];
@@ -85,7 +87,7 @@ void GlesRenderer::initVertexData() {
     glBufferData(GL_ARRAY_BUFFER, sizeof vertex_data, &vertex_data, GL_STATIC_DRAW);
 }
 
-GlesRenderer::GlesRenderer(SDL_Window *window, SDL_Texture *texture, const float input_size[2], const float output_size[2], const float sharpness) {
+GlesRenderer::GlesRenderer(SDL_Window *window, SDL_Texture *texture, const float input_size[2], const float output_size[2], const float sharpness, bool swap_rb) {
 #if defined(IOS) || defined(ANDROID)
 //#define SDL_PROC(ret,func,params) func=func;
 #endif
@@ -99,8 +101,21 @@ GlesRenderer::GlesRenderer(SDL_Window *window, SDL_Texture *texture, const float
         utils::printError("## GlesRenderer::GlesRenderer  context error: %s\n", SDL_GetError());
     }
 
+    /* Inject CAS_SWAP_RB after #version (must stay first line in GLSL ES).
+     * ARGB8888 (desktop / many handhelds): swap; ABGR8888 (some ARM GLES): no swap. */
+    std::string frag_src = post_cas_glsl;
+    if (swap_rb) {
+        const std::string ver = "#version 300 es\n";
+        size_t pos = frag_src.find(ver);
+        if (pos != std::string::npos)
+            frag_src.insert(pos + ver.size(), "#define CAS_SWAP_RB 1\n");
+        else
+            frag_src.insert(0, "#define CAS_SWAP_RB 1\n");
+    }
+    utils::printInfo("GlesRenderer: CAS_SWAP_RB=%d (texture RB channel swap)\n", swap_rb ? 1 : 0);
+
     vert_shader = createShader(GL_VERTEX_SHADER, post_vert_src);
-    frag_shader = createShader(GL_FRAGMENT_SHADER, post_cas_glsl);
+    frag_shader = createShader(GL_FRAGMENT_SHADER, frag_src.c_str());
     const auto id = glCreateProgram();
     // printf("## vert_shader=%d, frag_shader=%d, program=%d\n", vert_shader, frag_shader, id);
     glAttachShader(id, vert_shader);

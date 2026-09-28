@@ -2247,7 +2247,15 @@ const char *post_cas_glsl =
  "out vec4 color;"
  "AF3 CasLoad(ASU2 p)"
  "{"
+   /* Channel order depends on SDL texture upload (GL_RGBA of raw bytes).
+    * ARGB8888 → bytes BGRA → need .zyx; ABGR8888 → bytes RGBA → .xyz.
+    * GlesRenderer inserts #define CAS_SWAP_RB before compiling.
+    * GLSL directives must start on their own line. */
+   "\n#ifdef CAS_SWAP_RB\n"
    "return texelFetch(u_texture,ivec2(p.x,int(Const1.w)-p.y),0).zyx;"
+   "\n#else\n"
+   "return texelFetch(u_texture,ivec2(p.x,int(Const1.w)-p.y),0).xyz;"
+   "\n#endif\n"
  "}"
  "void CasInput(inout AF1 r,inout AF1 g,inout AF1 b)"
  "{}\n"

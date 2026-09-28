@@ -25,6 +25,7 @@
 
 #include "ONScripter.h"
 #include "Utils.h"
+#include "sys_volume.h"
 #if defined(LINUX)
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -1468,6 +1469,9 @@ void ONScripter::runEventLoop()
             SMPEG_status(layer_smpeg_sample);
 #endif    
         bool ret = false;
+        if ((event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) &&
+            sys_volume::handleKey(event.key))
+            continue;
         // ignore continous SDL_MOUSEMOTION
         while (event.type == SDL_MOUSEMOTION || event.type == SDL_FINGERMOTION) {
             if ( SDL_PeepEvents( &tmp_event, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT ) == 0 ) break;

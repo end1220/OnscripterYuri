@@ -21,6 +21,12 @@ add_executable(onsyuri_launcher
 
 set_target_properties(onsyuri_launcher PROPERTIES OUTPUT_NAME "ons_launcher")
 
+add_custom_command(TARGET onsyuri_launcher POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_SOURCE_DIR}/gamecontrollerdb.txt
+        $<TARGET_FILE_DIR:onsyuri_launcher>/gamecontrollerdb.txt
+)
+
 if(STATIC_PORT_ROOT)
     target_include_directories(onsyuri_launcher PRIVATE
         ${STATIC_PORT_ROOT}/include

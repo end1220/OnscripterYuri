@@ -529,6 +529,7 @@ set(ONSYURI_CODE
     src/onsyuri/ScriptParser.cpp
     src/onsyuri/ScriptParser_command.cpp
     src/onsyuri/sjis2utf16.cpp
+    src/onsyuri/sys_volume.cpp
     src/onsyuri/renderer/gles_renderer.cpp
     src/onsyuri/builtin_dll/layer_oldmovie.cpp
     src/onsyuri/builtin_dll/layer_snow.cpp

@@ -13,5 +13,5 @@ export LD_LIBRARY_PATH="$SCRIPT_DIR/ONScripter/lib${LD_LIBRARY_PATH:+:$LD_LIBRAR
     --games-root "$GAME_ROOT" \
     --font "$ONS_DIR/font.ttf" \
     --launcher-data-dir "$ONS_DIR" \
-    --pass-arg "--fullscreen2" --pass-arg "--sharpness" --pass-arg "9.1" \
+    --pass-arg "--fullscreen2" --pass-arg "--sharpness" --pass-arg "0.4" \
     "$@" >"$ONS_DIR/log0.txt" 2>&1

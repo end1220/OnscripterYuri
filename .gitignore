@@ -3,6 +3,7 @@
 asset/*test*/**
 asset/stdout.txt
 asset/stderr.txt
+.cache/
 build/**
 build_*/**
 thirdparty/**
